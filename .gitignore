@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+.next/
+cache/
+artifacts/
+
+# Env / secrets — never commit real credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+mnemonic*.txt
+chain-signer.json
+
+# Hedera / testnet ephemeral signer material
+**/chain-signer*.json
+**/.harness/runs/
+**/.harness/runtime/
+**/.harness-semantic/
+**/.skill-cache/
+
+# Test/run artifacts
+.tmp-test/
+coverage/
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Foundry
+broadcast/
+cache_forge/
