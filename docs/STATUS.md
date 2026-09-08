@@ -57,9 +57,9 @@ identities, as a typed `ValidationFinding`. PRs #39 (mirror-node reliability) an
 
 ## Blockers
 
-None currently blocking Phase 3 (schema design is offline work). Real testnet execution
-(Phase 4+ live runs, not the type-level/unit tests) is blocked on `docs/MANUAL_ACTIONS.md` #1
-(operator credentials) until supplied.
+None. Manual Action #1 (testnet operator credentials) resolved 2026-09-08 — account
+`0.0.10418936`, verified live with 1000 ℏ, stored at `~/.hedera-testnet.env` (outside both
+repos, mode `600`). Real testnet execution (Phase 4+) is now unblocked.
 
 ## Next 3 tasks
 

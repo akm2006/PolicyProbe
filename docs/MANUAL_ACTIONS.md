@@ -3,17 +3,21 @@
 Only items that genuinely need the human. Everything else proceeds autonomously per
 `docs/EXECUTION_PLAN.md`. Each item: why needed, when it blocks, exact steps, expected result.
 
-## 1. Hedera testnet operator account + funding
+## 1. Hedera testnet operator account + funding — ✅ DONE (2026-09-08)
 
 **Why:** `chainValidation` (and any real assertion run) requires
 `HEDERA_OPERATOR_ID` / `HEDERA_OPERATOR_KEY` (ECDSA) in the shell environment — an existing,
 funded testnet account. Never generated or funded by the agent.
-**Blocks:** Phase 4 onward (any real testnet execution) in `docs/EXECUTION_PLAN.md`.
-**Steps:** create/confirm an ECDSA account at https://portal.hedera.com, fund via testnet
-faucet, `export HEDERA_OPERATOR_ID=0.0.xxxx` and `export HEDERA_OPERATOR_KEY=0x...` in the
-shell used to run the harness (not committed anywhere — see `.gitignore`).
-**Expected result:** `npx hedera-harness doctor` in a test workspace reports the chain
-operator check green.
+**Status:** Supplied by the user this session, verified read-only against real testnet
+(`AccountBalanceQuery`): account `0.0.10418936` is live, balance 1000 ℏ, EVM address derived
+from the key matches the one provided (`0x5edbc5e7e9100276e4c4f0d6c405fe4ad3b2b668`) —
+account/key/address are consistent.
+**Where it lives:** `~/.hedera-testnet.env` (mode `600`, home directory — outside both git
+repos, cannot be accidentally committed; not inside `policy-probe` or `hedera-harness`). Any
+session needing real testnet execution should `source ~/.hedera-testnet.env` first, never
+re-request or re-paste the key. The raw key is never written into either repo, never logged
+in a git-tracked file, and is not repeated in docs beyond this pointer.
+**Unblocks:** Phase 4 onward (real testnet execution) in `docs/EXECUTION_PLAN.md`.
 
 ## 2. Approve opening the upstream Hedera Harness PR
 
