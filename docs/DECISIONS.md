@@ -101,3 +101,32 @@ and keeps authorship consistent between the submission repo and the upstream-fac
 force-pushed; the fork's one local commit was amended. Any commit made in either repo going
 forward must keep using this identity — verify with `git log -1 --format='%an <%ae>'` if in
 doubt, don't rely on the global default.
+
+---
+
+## ADR-0006 — Chain-assertion recipe schema locked: extend `chainValidation`, don't add a new top-level key
+
+**Date:** 2026-09-08
+**Decision:** The deterministic on-chain postcondition assertion schema is
+`chainValidation.actors` (named additional ephemeral signers) +
+`chainValidation.assertions` (`{id, description?, actor?, action, expect}`), documented in full
+in `docs/HARNESS_ARCHITECTURE.md`. `action` reuses the existing `ChainValidationDeployCommand`
+type rather than a new near-duplicate interface.
+**Alternatives considered:**
+- A new top-level `spec.chainAssertions` key — rejected: assertions inherently depend on
+  `chainValidation`'s signer infrastructure, so nesting avoids a second top-level surface and
+  keeps `KNOWN_SPEC_KEYS` (`specDefaults.ts`) untouched.
+- A dedicated `ChainAssertionActionConfig` type — rejected after self-review: field-for-field
+  identical to `ChainValidationDeployCommand`; reusing it is a smaller, more consistent diff.
+**Evidence:** implemented in `../hedera-harness` (`src/types.ts`, `src/specLoader.ts`,
+`test/chain-assertions-schema.test.mjs`, `docs/authoring-a-recipe.md`), full suite green at
+**206/206** (`npm test`), `npm run typecheck` clean. Reviewed via the `policyprobe-upstream-review`
+skill (self-review — the `upstream-reviewer` subagent was not registered by the harness at
+review time despite matching frontmatter to `harness-researcher`, which was; filed as product
+feedback rather than blocking on it).
+**Reason:** smallest diff that supports all three MVP assertion primitives (transaction
+outcome, balance delta, actor-authorization boundary as two assertions with different `actor`
+values) without a speculative DSL.
+**Consequences:** Execution/evaluation logic (Phase 4) and finding-category wiring (Phase 5)
+are still unimplemented — the schema currently validates and is inert. The doc explicitly
+labels this "recipe schema only" so no one mistakes it for a working feature.

@@ -102,25 +102,50 @@ change needed there beyond the structural/actionable classification above.
   declared expectation — `chainSigner.ts` only creates/tops-up/sweeps the account. Any receipt
   or mirror-node evidence collection for postcondition checking is new code.
 
-## Where PolicyProbe's assertion mechanism plugs in (design draft, not yet implemented)
+## Where PolicyProbe's assertion mechanism plugs in — recipe schema LOCKED (2026-09-08)
 
-1. **Recipe surface**: a new optional `spec.chainAssertions` (or extend `chainValidation`) —
-   ordered list of `{ id, action, expect }` entries; `action` names a command/call to execute
-   with the signer, `expect` is one of the MVP primitives in `docs/PROJECT_CHARTER.md`.
-2. **Execution point**: after `runChainDeploy`, before/alongside EVALUATE — needs the signer,
-   needs the app already deployed, should NOT require the browser/Playwright/LLM.
-3. **Evaluation**: pure code — execute the declared action (contract call / HTS operation) with
-   the appropriate signer identity, read back the result via SDK receipt +
-   (once #39 lands) the hardened mirror-node reader, compare against `expect` deterministically.
-4. **Findings**: new `category` (name TBD at implementation time, avoid colliding with `#43`'s
-   `"mirror-node"` if it has merged by then) + matching `*-infra` sibling category.
-5. **Naming**: keep the upstream-facing name generic — e.g. "deterministic on-chain
-   postcondition assertions" — never "PolicyProbe" inside `src/`. See
-   `docs/COMPETITOR_AUDIT.md` for why this must stay clearly differentiated from #39/#43/#40.
+**Schema implemented and merged into the working branch** (not yet upstream — see
+`docs/DECISIONS.md` ADR-0006). Execution/evaluation is **not** implemented yet (Phase 4).
 
-This section is a design draft to be finalized against maintainer feedback (see
-`Hedera_PolicyProbe_ETHOnline_2026_Winning_Package.md` §15 for the intended sponsor-check
-question) before locking the recipe schema — do not treat it as final API.
+1. **Recipe surface**: extends `chainValidation` (not a new top-level key — smaller diff, and
+   assertions inherently need the signer infrastructure `chainValidation` already owns):
+   - `chainValidation.actors: Record<string, { fundingHbar?: number }>` — additional named
+     ephemeral signers, provisioned the same way as the primary `chainSigner`, needed for
+     actor-authorization-boundary assertions (an unauthorized actor's identity must differ from
+     the primary signer's).
+   - `chainValidation.assertions: ChainAssertionConfig[]` — `{ id, description?, actor?, action,
+     expect }`. `action` reuses the existing `ChainValidationDeployCommand` shape (`{name,
+     command, timeoutMs?}`) rather than duplicating it — same "one named shell step, signer env
+     vars injected" concept as `deploy.commands`. `expect` is `{ outcome: "mustSucceed" |
+     "mustRevert", reasonContains?, balanceDelta? }`; `balanceDelta` is `{ account | accountEnv,
+     asset: "hbar" | {tokenId}, equals: string }` (string, not number — avoids float precision
+     loss on tinybar/smallest-unit amounts).
+   - Full worked example + field-by-field notes: `../hedera-harness/docs/authoring-a-recipe.md`
+     §"chainValidation.assertions".
+2. **`id` stability**: enforced at load (uniqueness) and documented as the contract the repair
+   loop depends on (`findingsLifecycle.ts` diffs by id) — do not rename an id to "fix" a finding.
+3. **Execution point** (Phase 4, not yet built): after `runChainDeploy`, before/alongside
+   EVALUATE — needs the signer(s), needs the app already deployed, must NOT require the
+   browser/Playwright/LLM.
+4. **Evaluation** (Phase 4): pure code — execute the declared action with the resolved actor's
+   signer, read back the result via SDK receipt + (once #39 lands) the hardened mirror-node
+   reader, compare against `expect` deterministically.
+5. **Findings** (Phase 5): new `category` (avoid colliding with `#43`'s `"mirror-node"` if it
+   has merged by then) + matching `*-infra` sibling category, per the `eval`/`eval-infra`
+   precedent above.
+6. **Naming**: upstream-facing name stays generic ("deterministic on-chain postcondition
+   assertions"); confirmed zero `PolicyProbe`/`policyprobe` strings in `src/`/`docs/` of the
+   fork (`grep -rn "policyprobe" src/ docs/authoring-a-recipe.md` — empty).
+
+**Review pass**: `policyprobe-upstream-review` self-review (the `upstream-reviewer` subagent
+was not yet registered by the harness at review time — see feedback filed) caught one real
+defect — `ChainAssertionActionConfig` duplicated `ChainValidationDeployCommand` field-for-field
+— fixed by reusing the existing type. `npm run typecheck` clean, `npm test` **206/206 pass**
+(197 prior + 9 new schema tests) after the fix.
+
+Still open before implementing execution: get maintainer sanity-check on architecture
+placement (`docs/MANUAL_ACTIONS.md` #5, `Hedera_PolicyProbe_ETHOnline_2026_Winning_Package.md`
+§15) — not blocking, proceed on our own judgment if no timely response.
 
 ## Test suite conventions worth matching
 

@@ -1,8 +1,8 @@
 # Status
 
 **Last updated:** 2026-09-08 (bootstrap session)
-**Phase:** 1 (audit) and 2 (executable reproduction) complete → entering Phase 3 (lock the
-assertion schema draft)
+**Phase:** 1, 2, and 3 (recipe schema locked) complete → entering Phase 4 (implement
+`mustSucceed`/`mustRevert` execution)
 
 ## Repos
 
@@ -12,11 +12,20 @@ assertion schema draft)
   `manovHacksaw/hedera-harness` (`origin`, **not yet pushed to** — see below), `upstream` =
   `hedera-dev/hedera-harness`. Working branch:
   `policyprobe/deterministic-onchain-postconditions`, based on `dev` @
-  **`587a2f335c29835e9505d9f13e230b8d677c0674`**. One commit so far, **local only**:
-  `fea4974 test: reproduce the missing deterministic chain-postcondition capability`. Not
-  pushed to the fork (`origin`) — forks of a public repo are themselves public, so pushing is
-  a publish action gated by the operating contract; treat as covered by
-  `docs/MANUAL_ACTIONS.md` #2/#3.
+  **`587a2f335c29835e9505d9f13e230b8d677c0674`** (re-verified same-day, no drift). Two commits
+  so far, **local only, not pushed** (see ADR-0004 — pushing to the public fork is a publish
+  action):
+  - `fea4974` test: reproduce the missing deterministic chain-postcondition capability
+  - `fadb800` feat: recipe schema for deterministic on-chain postcondition assertions
+
+## Phase 3 addition — recipe schema locked
+
+`chainValidation.actors` / `chainValidation.assertions` implemented in `../hedera-harness`:
+`src/types.ts`, `src/specLoader.ts` (parsing + validation), `test/chain-assertions-schema.test.mjs`
+(9 new tests), `docs/authoring-a-recipe.md` (new documented section, explicitly marked
+"schema only — not yet executed"). Full detail and the ADR: `docs/HARNESS_ARCHITECTURE.md`,
+`docs/DECISIONS.md` ADR-0006. Self-reviewed via `policyprobe-upstream-review` (caught and fixed
+one real duplication defect). `npm run typecheck` clean, `npm test` **206/206 pass**.
 
 ## What works (verified this session)
 
@@ -49,11 +58,13 @@ identities, as a typed `ValidationFinding`. PRs #39 (mirror-node reliability) an
 ## Unresolved
 
 - ATS repo/docs not yet fetched — `docs/RESEARCH_SOURCES.md` flags this explicitly. Must happen
-  before any ATS fixture design (Phase 8/11), not before Phase 3–7.
-- Recipe schema for the new assertion primitive is a design draft only
-  (`docs/HARNESS_ARCHITECTURE.md` §"Where PolicyProbe's assertion mechanism plugs in") — not
-  yet reviewed via `policyprobe-upstream-review`, not yet implemented.
-- No implementation code written yet in `../hedera-harness`, only the reproduction test.
+  before any ATS fixture design (Phase 8/11), not before Phase 4–7.
+- Execution/evaluation engine (actually run an action, query chain evidence, compare to
+  `expect`, emit a finding) is **not implemented** — the schema validates but nothing consumes
+  it yet. This is Phase 4.
+- `upstream-reviewer`/`security-validator`/`demo-auditor` subagents are defined
+  (`.claude/agents/`) but not yet registered by the harness — only `harness-researcher` is
+  live. Filed as feedback; fall back to the matching skill for self-review until resolved.
 
 ## Blockers
 
@@ -63,12 +74,14 @@ repos, mode `600`). Real testnet execution (Phase 4+) is now unblocked.
 
 ## Next 3 tasks
 
-1. Lock the recipe schema draft (`docs/HARNESS_ARCHITECTURE.md` §"Where PolicyProbe's assertion
-   mechanism plugs in") into a real TS interface + JSON shape; run it through
-   `policyprobe-upstream-review` before implementing (Phase 3).
-2. Implement `mustSucceed`/`mustRevert` transaction-outcome assertion with unit tests, still
-   network-independent where possible (mock signer/receipt shapes), real testnet only once
-   Manual Action #1 is supplied (Phase 4).
+1. Implement the execution engine: run a `chainValidation.assertions[]` entry's `action` with
+   the resolved actor's signer, capture a transaction id from the command's output, query its
+   real outcome (SDK receipt now; the hardened mirror-node reader once #39 lands) — network
+   credentials are available (`~/.hedera-testnet.env`), so this can be tested against real
+   testnet, not just mocks (Phase 4).
+2. Implement `mustSucceed`/`mustRevert` comparison against that real outcome, with unit tests
+   covering the false-positive/false-negative/infra-failure distinctions in
+   `docs/ACCEPTANCE_CRITERIA.md`.
 3. Wire assertion failures into a new `ValidationFinding` category + `*-infra` sibling, through
    `promptBuilder.ts`'s structural/actionable split (Phase 5).
 
