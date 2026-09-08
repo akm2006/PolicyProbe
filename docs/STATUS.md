@@ -1,16 +1,22 @@
 # Status
 
 **Last updated:** 2026-09-08 (bootstrap session)
-**Phase:** 1 complete (audit) → entering Phase 2 (smallest executable reproduction of the gap)
+**Phase:** 1 (audit) and 2 (executable reproduction) complete → entering Phase 3 (lock the
+assertion schema draft)
 
 ## Repos
 
-- **`policy-probe`** (this repo) — git initialized, GitHub repo `manovHacksaw/PolicyProbe`
-  created this session. Not yet public.
+- **`policy-probe`** (this repo) — git initialized, pushed to `manovHacksaw/PolicyProbe`
+  (private) this session.
 - **`../hedera-harness`** — cloned `hedera-dev/hedera-harness`, forked to
-  `manovHacksaw/hedera-harness` (`origin`), `upstream` = `hedera-dev/hedera-harness`. Working
-  branch: `policyprobe/deterministic-onchain-postconditions`, based on `dev` @
-  **`587a2f335c29835e9505d9f13e230b8d677c0674`**. No commits on the branch yet (clean checkout).
+  `manovHacksaw/hedera-harness` (`origin`, **not yet pushed to** — see below), `upstream` =
+  `hedera-dev/hedera-harness`. Working branch:
+  `policyprobe/deterministic-onchain-postconditions`, based on `dev` @
+  **`587a2f335c29835e9505d9f13e230b8d677c0674`**. One commit so far, **local only**:
+  `10364e5 test: reproduce the missing deterministic chain-postcondition capability`. Not
+  pushed to the fork (`origin`) — forks of a public repo are themselves public, so pushing is
+  a publish action gated by the operating contract; treat as covered by
+  `docs/MANUAL_ACTIONS.md` #2/#3.
 
 ## What works (verified this session)
 
@@ -31,29 +37,40 @@ identities, as a typed `ValidationFinding`. PRs #39 (mirror-node reliability) an
 ("Tier 2.5" entity/metadata existence checks) are adjacent, not competing — confirmed via
 `gh pr view` bodies/file lists, not just titles.
 
+## What works (Phase 2 addition)
+
+- `test/policyprobe-postcondition-gap.test.mjs` added to the Harness fork — two
+  characterization tests, run against the **real** exported `runChainDeploy`, proving:
+  (a) a deploy command that exits 0 produces zero findings regardless of what it actually did
+  on-chain; (b) the one finding it *can* produce (`category: "commands"`) carries no
+  expect/observed evidence shape. Full upstream suite: **197/197 pass** (195 baseline + 2 new)
+  after this addition, `npm run build` clean.
+
 ## Unresolved
 
 - ATS repo/docs not yet fetched — `docs/RESEARCH_SOURCES.md` flags this explicitly. Must happen
-  before any ATS fixture design (Phase 8/11), not before Phase 2–7.
+  before any ATS fixture design (Phase 8/11), not before Phase 3–7.
 - Recipe schema for the new assertion primitive is a design draft only
   (`docs/HARNESS_ARCHITECTURE.md` §"Where PolicyProbe's assertion mechanism plugs in") — not
   yet reviewed via `policyprobe-upstream-review`, not yet implemented.
-- No code written yet in `../hedera-harness` beyond checking out the working branch.
+- No implementation code written yet in `../hedera-harness`, only the reproduction test.
 
 ## Blockers
 
-None currently blocking Phase 2 (reproduction can be written without testnet credentials — it
-demonstrates the *architectural* gap, not a live run). Real testnet execution (Phase 4+) is
-blocked on `docs/MANUAL_ACTIONS.md` #1 (operator credentials) until supplied.
+None currently blocking Phase 3 (schema design is offline work). Real testnet execution
+(Phase 4+ live runs, not the type-level/unit tests) is blocked on `docs/MANUAL_ACTIONS.md` #1
+(operator credentials) until supplied.
 
 ## Next 3 tasks
 
-1. Write the smallest executable reproduction in `../hedera-harness` demonstrating the gap
-   (Phase 2, `docs/EXECUTION_PLAN.md`) — a test/script showing EVALUATE-only chain checks are
-   LLM-judged and no finding category exists for outcome-vs-expectation.
-2. Lock the recipe schema draft into a real TS interface + JSON shape, run it through
-   `policyprobe-upstream-review` before implementing.
-3. Implement `mustSucceed`/`mustRevert` transaction-outcome assertion with unit tests (Phase 4).
+1. Lock the recipe schema draft (`docs/HARNESS_ARCHITECTURE.md` §"Where PolicyProbe's assertion
+   mechanism plugs in") into a real TS interface + JSON shape; run it through
+   `policyprobe-upstream-review` before implementing (Phase 3).
+2. Implement `mustSucceed`/`mustRevert` transaction-outcome assertion with unit tests, still
+   network-independent where possible (mock signer/receipt shapes), real testnet only once
+   Manual Action #1 is supplied (Phase 4).
+3. Wire assertion failures into a new `ValidationFinding` category + `*-infra` sibling, through
+   `promptBuilder.ts`'s structural/actionable split (Phase 5).
 
 ## Active manual actions
 
