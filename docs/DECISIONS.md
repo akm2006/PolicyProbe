@@ -130,3 +130,58 @@ values) without a speculative DSL.
 **Consequences:** Execution/evaluation logic (Phase 4) and finding-category wiring (Phase 5)
 are still unimplemented — the schema currently validates and is inert. The doc explicitly
 labels this "recipe schema only" so no one mistakes it for a working feature.
+
+---
+
+## ADR-0007 — Execution engine: infra-vs-violation classification, and one deferred fix
+
+**Date:** 2026-09-08
+**Decision:** Implemented `chainAssertions.ts` (execute action → capture real transaction id →
+query real Mirror Node result → compare to `expect`) and wired it into the pipeline
+(`runChainAssertionsStage`, after `runChainDeploy`). Reviewed via an independent `general-purpose`
+agent standing in for the still-unregistered `upstream-reviewer` subagent. Applied 4 real fixes
+before committing:
+1. **Action-command failure (non-zero exit / timeout) is now `chain-assertion-infra`, not a
+   policy-violation claim.** Originally, any action that produced no parseable transaction id —
+   whether because it exited 0 and just forgot to print one, or because it failed/timed out for
+   possibly-infra reasons — was treated identically as an actionable `chain-assertion` finding.
+   Fixed: only a script that exits 0 but prints nothing is a config/script problem; a script that
+   didn't even complete is evidence-unavailable, never a violation claim, per the "fail closed on
+   ambiguity" rule.
+2. **`balanceDelta.equals` validated as a signed-integer string at load time** — previously an
+   unguarded runtime `BigInt(equals)` could crash the whole run on a plausible recipe typo
+   (`"5.5e8"`, `"500,000,000"`).
+3. **`docs/authoring-a-recipe.md` updated** — it still said "schema only, not yet executed,"
+   which became false the moment this commit landed.
+4. **A private-repo-path reference removed** from `chainAssertionEvidence.ts`'s module comment
+   (`policy-probe/docs/COMPETITOR_AUDIT.md`) — folded into that already-committed, unpushed
+   commit via `git commit --amend` rather than left as a separate fixup, since it was still the
+   branch tip and nothing was stacked on it yet.
+
+Also added: repair-prompt template updates (`prompts/repair-runtime.md`,
+`prompts/repair-broad.md` now name `[chain-assertion]`/`[chain-assertion-infra]` explicitly,
+matching the review's finding that the LLM-facing artifacts were silently missing the new
+category) and `promptBuilder.ts` classification tests that didn't exist before (a
+`chain-assertion`-only batch → `runtime` scope; a `chain-assertion-infra`-only batch → falls
+back to `broad` with the infra finding itself never appearing in the rendered prompt; a mixed
+batch → `runtime` scope with only the real violation shown).
+
+**Deliberately not fixed, and documented as such** (in-code comment in `chainAssertions.ts` and
+here): `executeCommand` can reject outright (child-process spawn error) rather than resolve with
+a failure result, uncaught anywhere in this call chain — a crash instead of a graceful finding.
+This is a pre-existing pattern shared by `runChainDeploy`, not a new regression. Fixing it here
+would mean either leaving the identical gap in `runChainDeploy` (inconsistent) or expanding this
+diff to fix unrelated pre-existing code (scope creep). Tracked as a follow-up, not blocking.
+
+**Evidence:** `npm run typecheck` clean; `npm test` **246/246 pass** with real testnet
+credentials sourced, including the full live end-to-end test (real transaction → real Mirror
+Node → correct verdict). Two new negative tests specifically reproduce the fixed action-failure
+misclassification (non-zero exit and timeout, both now `chain-assertion-infra`). Post-review
+branding re-check (`grep -rn "policyprobe" src/ docs/authoring-a-recipe.md prompts/`) is empty.
+**Reason:** integrity of the infra-vs-violation distinction is the project's core correctness
+property — worth fixing immediately rather than deferring, even mid-implementation.
+**Consequences:** `../hedera-harness` now has 6 local, unpushed commits
+(`fea4974`…`ec927f3`) implementing the full assertion pipeline: schema, actor provisioning,
+evidence reading, and execution/evaluation. Phase 4 and Phase 5 (finding-category wiring) are
+both complete — they turned out inseparable in practice, since a finding is meaningless without
+something to consume it, and vice versa.

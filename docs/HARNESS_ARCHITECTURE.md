@@ -137,15 +137,63 @@ change needed there beyond the structural/actionable classification above.
    assertions"); confirmed zero `PolicyProbe`/`policyprobe` strings in `src/`/`docs/` of the
    fork (`grep -rn "policyprobe" src/ docs/authoring-a-recipe.md` — empty).
 
-**Review pass**: `policyprobe-upstream-review` self-review (the `upstream-reviewer` subagent
-was not yet registered by the harness at review time — see feedback filed) caught one real
-defect — `ChainAssertionActionConfig` duplicated `ChainValidationDeployCommand` field-for-field
-— fixed by reusing the existing type. `npm run typecheck` clean, `npm test` **206/206 pass**
-(197 prior + 9 new schema tests) after the fix.
+**Review pass (schema)**: `policyprobe-upstream-review` self-review caught one real defect —
+`ChainAssertionActionConfig` duplicated `ChainValidationDeployCommand` field-for-field — fixed
+by reusing the existing type.
 
-Still open before implementing execution: get maintainer sanity-check on architecture
-placement (`docs/MANUAL_ACTIONS.md` #5, `Hedera_PolicyProbe_ETHOnline_2026_Winning_Package.md`
-§15) — not blocking, proceed on our own judgment if no timely response.
+## Execution engine — IMPLEMENTED and reviewed (2026-09-08)
+
+`src/validation/chainAssertionEvidence.ts` + `src/validation/chainAssertions.ts`, wired into
+`attemptStages.ts` as `runChainAssertionsStage`, called right after `runChainDeploy` succeeds
+and before the dev server boots for SMOKE (needs the app deployed and the signer(s), not the
+browser).
+
+**Evidence reader** (`chainAssertionEvidence.ts`): `fetchTransactionResult` /
+`fetchHbarBalanceTinybars` / `fetchTokenBalance`, each against the real testnet Mirror Node
+REST API, each returning a strict `found | not-found | infra-error` trichotomy — propagation
+lag and genuine outages are never conflated with each other or with a policy result.
+Deliberately scoped to exactly these two questions, not a general Mirror Node client (see
+`docs/COMPETITOR_AUDIT.md` re: #39/#43).
+
+**Execution/evaluation** (`chainAssertions.ts`): for each `chainValidation.assertions[]` entry
+— resolve the actor's signer (primary or a named `chainValidation.actors` entry) → run
+`action.command` with that signer's env vars injected (same convention as `deploy.commands`) →
+require the command to print the real transaction id it submitted (`0.0.x@seconds.nanos`) in
+its output → independently query that transaction's real consensus result from Mirror Node →
+compare to `expect` (`mustSucceed`/`mustRevert`/`reasonContains`/`balanceDelta`) → emit exactly
+one `ValidationFinding` on mismatch, silent on match. The action command's own exit code is
+**never** the verdict — only used to distinguish "ran to completion" (exit 0) from "did not"
+(non-zero/timeout → `chain-assertion-infra`, not a violation claim, since that's ambiguous
+between a script bug and a transient infra failure).
+
+**Findings**: `ValidationFinding.category` extended with `"chain-assertion"` (confirmed
+violation, or a fixable config/script problem — fed to repair) and `"chain-assertion-infra"`
+(evidence unobtainable — never fed to repair as an app defect, mirrors `eval`/`eval-infra`
+exactly). A batch that is *entirely* infra aborts the attempt via the existing
+`evaluation.infrastructureFailure` mechanism (reused deliberately — traced every downstream
+reader, all only check the boolean + reason string, none assume "EVALUATE ran") instead of
+spending a repair attempt on something no agent could fix. `promptBuilder.ts`'s
+`classifyRepairScope` routes a `chain-assertion`-only or mixed batch to `"runtime"` scope; both
+repair prompt templates (`prompts/repair-runtime.md`, `prompts/repair-broad.md`) now name the
+category explicitly.
+
+**Review pass (execution engine)**: independent `general-purpose` agent (the `upstream-reviewer`
+subagent still wasn't registered — second occurrence, filed as feedback). Found and all fixed
+before commit: (1) action-failure evidence was being misclassified as a policy violation instead
+of infra, (2) unguarded `BigInt()` on `balanceDelta.equals` could crash on a recipe typo, (3) the
+authoring doc was stale, (4) a private-repo-path branding leak in the evidence reader's comment.
+One item deliberately deferred and documented rather than fixed: `executeCommand` can reject
+(not just resolve with a failure) uncaught — a pre-existing gap shared with `runChainDeploy`, out
+of scope for this diff. Full detail: `docs/DECISIONS.md` ADR-0007.
+
+**Verified**: `npm run typecheck` clean; `npm test` **246/246 pass** with real testnet
+credentials, including a full live end-to-end test — a real transaction, submitted by a real
+script the engine executed, resolved through the real Mirror Node to a correct verdict. Post-fix
+branding re-check across the whole diff is empty.
+
+Still open before an upstream PR: get maintainer sanity-check on architecture placement
+(`docs/MANUAL_ACTIONS.md` #5) — not blocking, proceed on our own judgment if no timely response;
+and the deferred `executeCommand` robustness item above.
 
 ## Test suite conventions worth matching
 
