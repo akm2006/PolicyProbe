@@ -78,3 +78,26 @@ that specific action.
 publishing project content is the irreversible/public action the operating contract gates.
 **Consequences:** `docs/MANUAL_ACTIONS.md` tracks the "approve opening the upstream PR" and
 "approve making PolicyProbe public" steps as pending human decisions near submission time.
+
+---
+
+## ADR-0005 — Commit identity: `manovHacksaw` GitHub noreply email, both repos
+
+**Date:** 2026-09-08
+**Decision:** All commits in `policy-probe` and the `hedera-harness` fork's working branch use
+`GIT_AUTHOR/COMMITTER_NAME=manovHacksaw`,
+`EMAIL=108396191+manovHacksaw@users.noreply.github.com` (GitHub's own private-email format for
+account id `108396191`), set as **repo-local** `user.name`/`user.email` in both working trees
+— not global.
+**Alternatives considered:** the real email backing `manovHacksaw` (not retrievable — `gh api
+user` returns no public email and the `user` email-list endpoint needs a broader token scope
+than this session has); the session's default global git identity, which had drifted between
+two different personal emails across the two repos.
+**Reason:** the noreply format reliably links commits to the `manovHacksaw` GitHub profile
+(avatar, profile link) on both repos without depending on account email visibility settings,
+and keeps authorship consistent between the submission repo and the upstream-facing fork.
+**Consequences:** `policy-probe`'s initial 10 commits were rewritten in place with
+`git filter-branch --env-filter` (single-owner private repo, no collaborators to disrupt) and
+force-pushed; the fork's one local commit was amended. Any commit made in either repo going
+forward must keep using this identity — verify with `git log -1 --format='%an <%ae>'` if in
+doubt, don't rely on the global default.

@@ -13,7 +13,7 @@ assertion schema draft)
   `hedera-dev/hedera-harness`. Working branch:
   `policyprobe/deterministic-onchain-postconditions`, based on `dev` @
   **`587a2f335c29835e9505d9f13e230b8d677c0674`**. One commit so far, **local only**:
-  `10364e5 test: reproduce the missing deterministic chain-postcondition capability`. Not
+  `fea4974 test: reproduce the missing deterministic chain-postcondition capability`. Not
   pushed to the fork (`origin`) — forks of a public repo are themselves public, so pushing is
   a publish action gated by the operating contract; treat as covered by
   `docs/MANUAL_ACTIONS.md` #2/#3.
