@@ -1,8 +1,9 @@
 # Status
 
 **Last updated:** 2026-09-08 (bootstrap session)
-**Phase:** 1, 2, and 3 (recipe schema locked) complete → entering Phase 4 (implement
-`mustSucceed`/`mustRevert` execution)
+**Phase:** 1–4 (execution engine implemented, proven on real testnet) complete, review in
+progress → entering Phase 5 (already substantially done as part of Phase 4's finding wiring;
+confirming after review)
 
 ## Repos
 
@@ -55,16 +56,46 @@ identities, as a typed `ValidationFinding`. PRs #39 (mirror-node reliability) an
   expect/observed evidence shape. Full upstream suite: **197/197 pass** (195 baseline + 2 new)
   after this addition, `npm run build` clean.
 
+## Phase 4 — execution engine implemented and proven on real testnet
+
+Uncommitted in `../hedera-harness` (review in progress, see below):
+- `src/validation/chainAssertionEvidence.ts` — Mirror Node evidence reader
+  (`fetchTransactionResult`/`fetchHbarBalanceTinybars`/`fetchTokenBalance`), each returning a
+  strict found/not-found/infra-error trichotomy.
+- `src/validation/chainAssertions.ts` — executes one assertion's action with the resolved
+  signer, captures the real transaction id from output, queries its real consensus result,
+  compares to the declared expectation (`mustSucceed`/`mustRevert`/`reasonContains`/
+  `balanceDelta`), emits a `ValidationFinding` on mismatch or on unresolvable evidence
+  (`chain-assertion` vs `chain-assertion-infra`).
+- Wired into `attemptStages.ts` (`runChainAssertionsStage`, runs after `runChainDeploy`,
+  before the dev server boots). A pure-infra batch reuses the existing
+  `evaluation.infrastructureFailure` abort mechanism instead of burning a repair attempt on
+  something the agent can't fix — found and fixed as a real gap during implementation, not
+  planned upfront.
+- `src/promptBuilder.ts` — new categories classified into repair scope; infra category
+  stripped from the repair prompt the same way `eval-infra` is.
+- **32 new tests** across 4 files (13 evidence-reader unit tests against a mock HTTP server, 2
+  live evidence tests, 17 execution-engine unit tests with injectable deps, 1 full live
+  end-to-end test, plus the earlier actor-provisioning and schema tests). **Full suite:
+  241/241 pass** with real testnet credentials sourced.
+- **Real testnet proof obtained**: a real self-transfer transaction, submitted by a real
+  script the engine executed, resolved through the real Mirror Node to `mustSucceed` — the
+  full execute → capture tx id → query evidence → compare → PASS loop, no mocks, no
+  simulation.
+
+Independent review in progress (`general-purpose` agent standing in for `upstream-reviewer`,
+since that subagent still isn't registered by the harness — see below). Will update this
+section and `docs/DECISIONS.md` with the outcome.
+
 ## Unresolved
 
 - ATS repo/docs not yet fetched — `docs/RESEARCH_SOURCES.md` flags this explicitly. Must happen
-  before any ATS fixture design (Phase 8/11), not before Phase 4–7.
-- Execution/evaluation engine (actually run an action, query chain evidence, compare to
-  `expect`, emit a finding) is **not implemented** — the schema validates but nothing consumes
-  it yet. This is Phase 4.
+  before any ATS fixture design (Phase 8/11).
 - `upstream-reviewer`/`security-validator`/`demo-auditor` subagents are defined
-  (`.claude/agents/`) but not yet registered by the harness — only `harness-researcher` is
-  live. Filed as feedback; fall back to the matching skill for self-review until resolved.
+  (`.claude/agents/`) but still not registered by the harness after a second attempt — only
+  `harness-researcher` is live. Working around it with a `general-purpose` agent given the
+  same review instructions inline. Filed as feedback; not blocking.
+- Findings from the current review pass not yet triaged (in progress).
 
 ## Blockers
 
