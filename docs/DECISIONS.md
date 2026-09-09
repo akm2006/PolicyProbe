@@ -185,3 +185,45 @@ property — worth fixing immediately rather than deferring, even mid-implementa
 evidence reading, and execution/evaluation. Phase 4 and Phase 5 (finding-category wiring) are
 both complete — they turned out inseparable in practice, since a finding is meaningless without
 something to consume it, and vice versa.
+
+---
+
+## ADR-0008 — ATS integration: direct contract calls, existing factory, whitelist not internal KYC
+
+**Date:** 2026-09-09
+**Decision:** The ATS bond fixture (`fixtures/ats-bond/`) calls `@hashgraph/asset-tokenization-contracts`'s
+published typechain factories directly with a plain `ethers.Wallet` signer, rather than the
+higher-level `@hashgraph/asset-tokenization-sdk`. It issues its bond through ATS's own existing
+Hedera testnet factory deployment (`0.0.9213391`) rather than deploying a new BLR/factory
+system. It uses the whitelist/control-list compliance mechanism (`isWhiteList: true`,
+`addToControlList`/`removeFromControlList`) rather than ATS's internal-KYC facet.
+**Alternatives considered:**
+- *`@hashgraph/asset-tokenization-sdk`'s documented `Network.connect` flow* — rejected: its
+  README states "Wallet: only metamask is compatible right now," and the underlying
+  `RPCTransactionAdapter` is coupled to a `MetamaskService`/`tsyringe` DI container with no
+  published headless entry point. Confirmed by reading the adapter's actual source, not just
+  assuming from the README wording.
+- *Deploying our own BLR/factory system* (`npm run deploy:newBlr:hedera:testnet` from the ATS
+  repo) — rejected as unnecessary: issuing a bond *through* an existing factory is the intended
+  integration pattern (this is what any real integrator building on ATS would do), and
+  redeploying the whole diamond system is a much heavier, riskier operation for no added proof
+  value.
+- *ATS's internal-KYC facet* (`grantKyc`/`activateInternalKyc`) — explored and abandoned after
+  hitting its verifiable-credential-issuer subsystem (`SSI_MANAGEMENT`): `grantKyc`'s `_issuer`
+  parameter is validated against something not resolvable with a plain address (own address and
+  `ZeroAddress` both rejected, selector `0xcd324f53`), and that registry wasn't worth reverse-
+  engineering for a demo fixture when whitelist/control-list demonstrates the identical policy
+  shape ("must be a verified investor to hold this asset") with a well-documented, two-function
+  API.
+**Evidence:** Real bond issued and independently verified on Hedera testnet
+(`fixtures/ats-bond/EVIDENCE.md`): 3 bonds deployed, 6/6 real policy-suite assertions pass
+against the correctly configured one, and the killer demo (same assertion id, same policy) FAILs
+with real evidence against a deliberately misconfigured one and PASSes against the fixed one.
+**Reason:** minimize integration risk and time against an unfamiliar enterprise SDK while still
+using ATS "for real" (real factory, real facets, real testnet) rather than a mock.
+**Consequences:** the fixture does not demonstrate ATS's internal-KYC/VC-issuer flow or its
+coupon/dividend corporate-action facets (both stretch/bonus per the ATS track's own bonus
+criteria, not requirements) — `docs/ACCEPTANCE_CRITERIA.md` reflects this as a deliberate scope
+line, not an oversight. Two real Harness-fork bugs were found and fixed as a direct result of
+this integration attempt (EVM transaction hash support, `mustRevert` gas-limit requirement) —
+recorded in the Harness fork's own commit `810f0c7` and `fixtures/ats-bond/EVIDENCE.md`.

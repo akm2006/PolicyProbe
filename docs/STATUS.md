@@ -1,10 +1,15 @@
 # Status
 
 **Last updated:** 2026-09-08 (bootstrap session)
-**Phase:** 1–5 complete (schema, actor provisioning, evidence reader, execution engine,
-finding-category/repair-loop wiring — reviewed, fixed, tested against real testnet) → entering
-Phase 6 (the killer-demo sequence: deliberately broken policy → real FAIL → repair → real fix
-→ rerun passes) and, in parallel, Phase 8 (fetch ATS repo/docs, not yet touched)
+**Phase:** 1–6, 8, and 11 complete (full assertion engine + the killer demo, on a real ATS bond,
+on real Hedera testnet) → entering Phase 9 (adversarial/security review pass) and Phase 12
+(before/after benchmark), with upstream PR polish (13) and judge UI (14) still ahead
+
+**Note on timeline framing:** earlier status updates in this file were paced against the
+verified Sept 13 deadline. Per explicit direction from the user (2026-09-09), further work is
+paced for production-grade correctness and completeness first, not deadline-driven scope
+cuts — the deadline in `docs/HACKATHON_REQUIREMENTS.md` remains a real fact to re-verify before
+submission, just not the thing driving what gets built or skipped right now.
 
 ## Repos
 
@@ -81,10 +86,33 @@ ADR-0004, pushing the fork is a publish action pending approval):
   end-to-end test (real transaction → real Mirror Node → correct verdict, no mocks).
 - Post-review branding re-check across the whole diff: empty.
 
+## Phase 6 + 8 + 11 — ATS bond fixture, real testnet, killer demo (2026-09-09)
+
+`fixtures/ats-bond/` in this repo (committed `006a2a7`), full detail and every transaction hash
+in `fixtures/ats-bond/EVIDENCE.md`:
+
+- A real bond, "Atlas Infrastructure Note 2027," issued on Hedera testnet **through ATS's own
+  existing factory** (`0.0.9213391`) — calling `@hashgraph/asset-tokenization-contracts`'s
+  published typechain factories directly with a plain ethers signer, not the higher-level SDK
+  (its documented connect flow is wallet-only, unusable headlessly — see ADR-0008).
+- **Full policy suite, 6/6 PASS**, run through the real `runChainAssertions` export (not a
+  reimplementation): unverified investor blocked, same transfer succeeds once whitelisted,
+  unauthorized freeze blocked, authorized freeze succeeds, frozen holder blocked, paused-asset
+  blocks transfer — every check backed by a real, independently-verified testnet transaction.
+- **The killer demo, for real**: the exact same assertion id (`reject-unverified-transfer`), run
+  against a deliberately misconfigured bond (compliance gating left off) → FAIL, with the real
+  violating transaction's evidence (transfer that should have reverted actually succeeded
+  on-chain); run against the corrected configuration → PASS. This is the winning-package's
+  central demo narrative, now real rather than planned.
+- **Two real Harness-fork bugs found and fixed** as a direct result of this integration attempt
+  (not planned upfront): EVM transaction hashes weren't recognized as evidence (fork commit
+  `810f0c7`), and a `mustRevert` action needs an explicit gas limit or ethers never broadcasts
+  the transaction at all (fixed in the fixture's own `sendAndReport` helper).
+- Internal-KYC (ATS's verifiable-credential-issuer subsystem) explored and deliberately not
+  used — whitelist/control-list demonstrates the identical policy shape more simply. ADR-0008.
+
 ## Unresolved
 
-- ATS repo/docs not yet fetched — `docs/RESEARCH_SOURCES.md` flags this explicitly. Must happen
-  before any ATS fixture design (Phase 8/11) — next major piece of work.
 - `upstream-reviewer`/`security-validator`/`demo-auditor` subagents defined
   (`.claude/agents/`) but still not registered by the harness after two attempts — only
   `harness-researcher` is live. Working around it with a `general-purpose` agent given the same
@@ -92,9 +120,12 @@ ADR-0004, pushing the fork is a publish action pending approval):
 - One deliberately deferred, documented limitation: `executeCommand` can reject (child-process
   spawn error) uncaught anywhere in the chain-assertion call path — pre-existing gap shared
   with `runChainDeploy`, not fixed here to avoid scope creep into unrelated existing code.
-- No integrated "deliberately broken app" demo yet — the mechanism is proven standalone, but
-  the Phase 6 killer-demo narrative (broken policy → FAIL → repair → fix → PASS against a real
-  app) hasn't been built.
+- The killer demo uses two separate bond deployments (broken vs. fixed), not a single Harness
+  repair-attempt rerun on one workspace — this proves the id-stability contract the repair loop
+  depends on, but not a literal coding-agent repair pass on a smart-contract config (out of
+  PolicyProbe's own scope — see `docs/ACCEPTANCE_CRITERIA.md`).
+- ATS bond fixture not yet run through an independent review pass (only the Harness-fork
+  changes have been reviewed so far) — worth one before finalizing for submission.
 
 ## Blockers
 
@@ -104,16 +135,24 @@ repos, mode `600`). Real testnet execution (Phase 4+) is now unblocked.
 
 ## Next 3 tasks
 
-1. Fetch and pin `hashgraph/asset-tokenization-studio` repo/docs (never done this session) —
-   establish the exact bond-issuance/KYC/freeze/pause/coupon API before designing the fixture.
-2. Design and build the ATS bond fixture with a deliberately broken rule (Phase 6/11) — the
-   killer-demo scenario: unverified investor can wrongly receive the bond, caught by a
-   `chain-assertion` with real testnet evidence.
-3. Run the fixture through the real repair loop: broken policy → FAIL → repair prompt → real
-   code fix → rerun → PASS, same finding id resolves to `status: "fixed"` (closes the last open
-   row in `docs/ACCEPTANCE_CRITERIA.md`'s "Repair finding integration" section).
+1. Independent review pass over `fixtures/ats-bond/` (scope, correctness, no simulated evidence
+   presented as real — matches what `demo-auditor` is for once registered).
+2. Adversarial/security pass over the full assertion engine (Phase 9) — false PASS/FAIL cases,
+   authorization assumptions, now with a real non-trivial fixture to stress it against.
+3. Start the before/after benchmark (Phase 12) using real data from this session: lines of
+   custom verification code a recipe author would otherwise write vs. the declarative
+   assertion, before this feature vs. after.
+
+## Superseded tasks (kept for history)
+
+1. ~~Fetch and pin `hashgraph/asset-tokenization-studio` repo/docs~~ — done, see Phase 6/8/11.
+2. ~~Design and build the ATS bond fixture with a deliberately broken rule~~ — done, real
+   testnet evidence in `fixtures/ats-bond/EVIDENCE.md`.
+3. ~~Run the fixture through the real repair loop~~ — done via two real deployments (see
+   "Unresolved" above for the honest caveat: this proves id-stability, not a literal
+   coding-agent repair pass on a smart-contract config).
 
 ## Active manual actions
 
-See `docs/MANUAL_ACTIONS.md` — none are currently blocking (#1 operator credentials will block
-Phase 4; #2/#3/#4 are submission-time items).
+See `docs/MANUAL_ACTIONS.md` — #1 (credentials) resolved. #2/#3/#4 remain submission-time items,
+none currently blocking.

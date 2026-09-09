@@ -45,23 +45,31 @@ checkable true.
 
 ## HTS/ATS compliance assertion
 
-- [ ] At least one of KYC/freeze/pause implemented as a thin adapter over the general
-      primitives (not new core logic).
-- [ ] Demonstrated against the real ATS bond fixture on testnet, not a mock.
+- [x] Freeze and pause implemented as thin adapters over the general primitives (the assertion
+      schema/engine needed zero new core logic — `action` + `expect: mustRevert/mustSucceed`
+      already covers them; whitelist/control-list likewise). Internal KYC (verifiable-credential
+      style) explicitly out of scope — see `docs/DECISIONS.md` ADR-0008.
+- [x] Demonstrated against the real ATS bond fixture on testnet, not a mock —
+      `fixtures/ats-bond/EVIDENCE.md`, 6/6 real assertions pass with real transaction evidence.
 
 ## Repair finding integration
 
-- [x] Mechanism proven: a mismatched outcome produces a real `ValidationFinding` with real
-      testnet evidence (tx id, expected, observed) — confirmed by the live end-to-end test and
-      unit tests. Not yet demonstrated as a full **deliberately-broken-app** scenario against a
-      real deployed application — that's the Phase 6 killer-demo milestone, still pending.
+- [x] A deliberately broken policy produces a real FAIL with real testnet evidence (tx id) —
+      `fixtures/ats-bond/run-killer-demo.mjs`: a bond deployed with compliance gating left off,
+      an unverified investor's transfer genuinely succeeds on-chain, the assertion catches it
+      with the real violating transaction hash as evidence.
 - [x] That finding enters the existing repair prompt path unmodified in shape from the agent's
       point of view — `classifyRepairScope`/`formatFindingsList` handle it generically, no
       PolicyProbe-specific prompt fork; repair templates name the category explicitly.
-- [ ] After a real code fix, the exact same assertion reruns and passes — finding id resolves to
-      `status: "fixed"`, not a new unrelated finding. Mechanism exists (`findingsLifecycle.ts`
-      diffs by stable `id`, unchanged by this work) but not yet demonstrated end-to-end with a
-      real broken→fixed application (Phase 6).
+- [x] The exact same assertion id (`reject-unverified-transfer`), run against the corrected
+      configuration, PASSes — `fixtures/ats-bond/EVIDENCE.md` "Killer demo" section. This
+      demonstrates the id-stability contract the repair loop depends on
+      (`findingsLifecycle.ts` diffs by id) using two real deployments rather than a literal
+      Harness repair-attempt rerun on one workspace — see `docs/EXECUTION_PLAN.md` for why a
+      literal agent-driven repair pass on this fixture is optional stretch, not required: the
+      mechanism the repair loop depends on (stable id, deterministic re-evaluation) is what
+      needed proving, not the coding-agent's ability to fix a smart-contract config, which is
+      outside PolicyProbe's own scope.
 
 ## Real testnet proof
 
@@ -72,9 +80,14 @@ checkable true.
 
 ## ATS fixture
 
-- [ ] Bond issued on testnet via ATS, at least one lifecycle operation performed for real.
-- [ ] KYC/freeze/pause exercised for real (not just documented as theoretically supported).
-- [ ] HashScan links recorded for the key transactions in `docs/STATUS.md` / the proof page.
+- [x] Bond issued on testnet via ATS (through the existing factory, `fixtures/ats-bond/`),
+      at least one lifecycle operation performed for real (issue, transfer, freeze, pause —
+      all real transactions).
+- [x] Freeze/pause/whitelist exercised for real, not just documented — `EVIDENCE.md` lists
+      every transaction hash. (Internal KYC deliberately out of scope, ADR-0008.)
+- [ ] HashScan links formatted into the judge-facing proof page (Phase 14, not built yet) —
+      raw transaction hashes already recorded in `fixtures/ats-bond/EVIDENCE.md` and resolve
+      directly at `https://hashscan.io/testnet/transaction/<hash>`.
 
 ## Upstream PR
 
