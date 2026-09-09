@@ -1,0 +1,20 @@
+{
+  "name": "policyprobe-ats-bond-fixture",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ATS bond demonstration fixture for PolicyProbe -- issues a real bond on Hedera testnet via the Asset Tokenization Studio factory and exercises it with PolicyProbe's deterministic chain assertions.",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hashgraph/asset-tokenization-contracts": "8.0.0",
+    "@hiero-ledger/sdk": "^2.87.0",
+    "ethers": "^6.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
