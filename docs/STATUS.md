@@ -154,6 +154,17 @@ actually running code against real testnet for the first time, not inspection:
   already answered 200, was misread as a confirmed `0n` with zero retries, instead of triggering
   the existing retry loop. Fixed; full detail `docs/DECISIONS.md` ADR-0010. Harness fork commit
   `427a36f`.
+- **Fixed, fixture-side**: rerunning the ATS bond policy suite fresh after this session's many
+  prior runs surfaced a real `INSUFFICIENT_FUNDS` failure on 3/6 assertions — not a code
+  regression. Root cause decoded from the actual failing transaction:
+  `TX_OVERRIDES.gasLimit: 1_000_000` × the relay's ~2340 gwei gas price meant every write call
+  reserved ~2.34 HBAR up front (the relay's intrinsic-cost check is against `gasLimit *
+  gasPrice`, not gas actually used — a real transfer's Mirror Node receipt shows `gas_used:
+  438652`). Alice's balance had drifted just below that reservation threshold. Fixed: gasLimit
+  reduced to `700_000`; funded Alice. Reran three times consecutively: 6/6, 5/6 (one genuine
+  transient Mirror Node blip, correctly classified `chain-assertion-infra`, not a false
+  verdict), 6/6. Full detail: `fixtures/ats-bond/EVIDENCE.md` finding #9. Submission repo
+  commit `c64d589`.
 - Full harness suite: **277/277 pass** on real testnet (up from 267/267; net of both fixes'
   new tests).
 
