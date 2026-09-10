@@ -1,12 +1,11 @@
 # Status
 
-**Last updated:** 2026-09-10
-**Phase:** 1–12 complete (full assertion engine, ATS killer demo, adversarial review with
-fixes, before/after benchmark, two more real bugs found and fixed by exercising previously-
-untested code paths) → entering Phase 13 (upstream PR polish); Phase 14 (judge UI) deliberately
-paused per explicit user direction (2026-09-10: "except UI... work" — continue real
-development work, Judge UI excluded, until told otherwise), with README/docs polish (15) and
-the demo video (16+) still ahead
+**Last updated:** 2026-09-11  
+**Phase:** 1–13, 15 complete (full assertion engine, ATS killer demo, adversarial review with
+fixes, before/after benchmark, two real bugfixes, upstream PR polish complete with PR description
+in `docs/UPSTREAM_PR_DESCRIPTION.md`, competitor audit fresh, and top-level judge-facing `README.md`
+authored) → Phase 14 (judge UI) paused per direction; Demo video (Phase 16/17) and ETHGlobal
+submission logistics (Phase 18) ahead of 2026-09-13 deadline.
 
 **Note on timeline framing:** earlier status updates in this file were paced against the
 verified Sept 13 deadline. Per explicit direction from the user (2026-09-09), further work is
@@ -193,15 +192,12 @@ repos, mode `600`). Real testnet execution (Phase 4+) is now unblocked.
 
 ## Next 3 tasks
 
-1. Upstream PR polish (Phase 13): rebase the Harness fork branch onto current `dev` (re-check
-   `docs/COMPETITOR_AUDIT.md` first — last checked 2026-09-10), confirm no new collision from
-   the several PRs that landed since, then prepare the PR description per
-   `.claude/skills/policyprobe-upstream-review`.
-2. Judge UI (Phase 14) — minimal evidence console now that there's real data to render:
-   overview, run detail, proof page per `docs/PROJECT_CHARTER.md`'s original sketch.
-3. README/docs pass (Phase 15) for the submission repo itself — the fixture and Harness fork
-   each have their own docs; the top-level `policy-probe` README judges will land on first
-   still needs writing.
+1. Approve opening upstream PR / pushing fork branch (`docs/MANUAL_ACTIONS.md` #2). Upstream PR
+   description is drafted in `docs/UPSTREAM_PR_DESCRIPTION.md`, rebased cleanly on `upstream/dev`.
+2. Demo video recording (Phase 16/17) — 2–4 min video with human voiceover following the narrative
+   in the winning package / README (broken policy fail → repair → pass).
+3. Final ETHGlobal submission logistics (Phase 18) — confirm repo visibility public
+   (`docs/MANUAL_ACTIONS.md` #3) and submit before 2026-09-13 12:00 PM EDT.
 
 ## Superseded tasks (kept for history)
 

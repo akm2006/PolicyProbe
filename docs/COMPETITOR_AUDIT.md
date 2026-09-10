@@ -1,10 +1,30 @@
 # Competitor / Collision Audit
 
-**Last checked: 2026-09-10** (previously 2026-09-08), against `hedera-dev/hedera-harness` open
+**Last checked: 2026-09-11** (previously 2026-09-10, 2026-09-08), against `hedera-dev/hedera-harness` open
 PRs/issues — re-run `gh pr list --repo hedera-dev/hedera-harness --state open` and
 `gh issue list --repo hedera-dev/hedera-harness --state open` before every Harness milestone;
 this repo is gaining several new PRs per day during the event, nearly all from different
-independent contributors.
+independent contributors. Upstream `dev` HEAD re-verified at `587a2f335c29835e9505d9f13e230b8d677c0674` (zero drift).
+
+## 2026-09-11 re-check: 3 new PRs (#56, #57, #58) — thesis 100% unique, zero collision
+
+New since 2026-09-10:
+- **#58 "Add an HCS topic + running hash validator to the CHAIN stage"** — adds `verifyRunningHashChain`
+  and `findSequenceGaps` for HCS message topics (read-only verification of dense message ordering
+  and topic running hash consistency). Scoped strictly to HCS topic messages; no transaction
+  execution, no `mustRevert` expectation, no actor boundary, no balance deltas.
+- **#57 "feat: add a codex agent preset, and count tool calls on claude"** — adds a `codex` CLI
+  preset (`codex exec --json`) and decodes `tool_use`/`tool_result` event streams for activity logging.
+  Pure agent preset/logging tooling; completely orthogonal.
+- **#56 "feat(validation): Add an ASSERT check for waiting out a contract deadline on the local clock"** —
+  adds a static ASSERT check catching local clock sleeps (`Date.now()`) preceding contract deadline
+  calls without intervening network queries. Static AST-style pattern check; unrelated to postcondition execution.
+
+**Verdict:** Zero overlap or collision. PolicyProbe remains the only mechanism for executing an
+on-chain action and deterministically verifying its outcome against a declared policy (`mustSucceed`/
+`mustRevert`, balance deltas, actor authorization) with typed finding generation for repair loops.
+
+---
 
 ## 2026-09-10 re-check: 5 new PRs since last audit, several close to our territory — verdict below
 
