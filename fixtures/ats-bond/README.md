@@ -2,8 +2,9 @@
 
 A real bond, "Atlas Infrastructure Note 2027", issued on Hedera testnet through the existing
 Asset Tokenization Studio factory (`0.0.9213391`), used to exercise PolicyProbe's deterministic
-on-chain assertion engine (from `../../../hedera-harness`) against a real regulated-security
-contract. See [`EVIDENCE.md`](EVIDENCE.md) for every real transaction hash.
+on-chain assertion engine (from `../../../hedera-harness`) against a contract implementing
+ATS's regulated-security token pattern. See [`EVIDENCE.md`](EVIDENCE.md) for every real
+transaction hash.
 
 ## What this is
 
@@ -15,9 +16,13 @@ contract. See [`EVIDENCE.md`](EVIDENCE.md) for every real transaction hash.
 - `src/asset.ts` — shared facet-connection helper and `sendAndReport`, which makes sure a
   transaction that reverts on-chain still gets reported (not swallowed by ethers throwing on
   `tx.wait()`) so the chain-assertion engine has real evidence to check.
+- `02-setup-policy-fixtures.ts` — provisions a freshly-deployed bond into the state the policy
+  suite assumes (roles granted, Alice/Bob/Carol whitelisted, Alice/Carol issued tokens, Carol
+  frozen). Safe to rerun — see the file's own comment for exactly which steps are genuinely
+  idempotent on-chain and which (issuance) isn't.
 - `run-policy-suite.mjs` — runs the full policy suite through the real
   `runChainAssertions` export from the Harness fork's build output. **6/6 PASS** against the
-  correctly configured bond.
+  correctly configured bond, confirmed rerunnable (it unpauses the bond as its own last step).
 - `run-killer-demo.mjs` — the centerpiece: the *same* assertion id, run first against a
   deliberately misconfigured bond (FAIL, with real evidence) and then against the fixed one
   (PASS).
@@ -36,14 +41,22 @@ source ~/.hedera-testnet.env
 # One-time: create the 4 demo actor accounts (writes .actors.json, gitignored)
 npx tsx src/setup-actors.ts
 
-# Deploy a bond (edit isin/isWhiteList in src/01-deploy-bond.ts as needed)
+# Deploy a bond (edit isin/isWhiteList in src/01-deploy-bond.ts as needed -- isWhiteList: true
+# for the "correctly configured" bond, false to reproduce the killer demo's broken one)
 npx tsx src/01-deploy-bond.ts
 
-# Run the full policy suite against an already-deployed, correctly configured bond
-# (edit the BOND constant in run-policy-suite.mjs to point at your deployment)
+# Required before run-policy-suite.mjs will pass against a FRESH deployment: grant roles,
+# whitelist Alice/Bob/Carol, issue tokens, freeze Carol. Not needed if you're pointing at the
+# already-provisioned bonds listed in EVIDENCE.md -- they're already in this state.
+BOND_DIAMOND_ADDRESS=<diamond address from the deploy step above> npx tsx 02-setup-policy-fixtures.ts
+
+# Run the full policy suite (edit the BOND constant in run-policy-suite.mjs to point at your
+# deployment) -- rerunnable, it unpauses the bond as its own last step
 node run-policy-suite.mjs
 
-# The killer demo (edit BROKEN_BOND / FIXED_BOND in run-killer-demo.mjs)
+# The killer demo (edit BROKEN_BOND / FIXED_BOND in run-killer-demo.mjs -- FIXED_BOND needs
+# 02-setup-policy-fixtures.ts run against it first; BROKEN_BOND only needs Alice issued tokens,
+# since its whole point is that nothing else is checked)
 node run-killer-demo.mjs
 ```
 

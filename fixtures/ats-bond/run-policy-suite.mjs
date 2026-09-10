@@ -8,6 +8,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { ethers } from "ethers";
 
 const HARNESS_DIST = path.resolve(import.meta.dirname, "../../../hedera-harness/dist");
 const { runChainAssertions } = await import(
@@ -22,10 +23,13 @@ function toChainSigner(actor) {
   return { accountId: actor.accountId, privateKeyHex: actor.privateKeyHex, evmAddress: actor.evmAddress, network: "testnet" };
 }
 
+const operatorKey = process.env.HEDERA_OPERATOR_KEY;
 const primarySigner = {
   accountId: process.env.HEDERA_OPERATOR_ID,
-  privateKeyHex: process.env.HEDERA_OPERATOR_KEY,
-  evmAddress: "0x5eDBC5E7e9100276E4c4F0D6C405fE4AD3B2b668",
+  privateKeyHex: operatorKey,
+  // Derived, not hardcoded -- this script must work for whoever's operator credentials are
+  // sourced, not just the specific account used the first time it was run.
+  evmAddress: new ethers.Wallet(operatorKey.startsWith("0x") ? operatorKey : `0x${operatorKey}`).address,
   network: "testnet",
 };
 
@@ -112,4 +116,20 @@ for (const assertion of assertions) {
     console.log(`      ${finding.message}`);
     if (finding.evidence) console.log(`      evidence: ${JSON.stringify(finding.evidence)}`);
   }
+}
+
+// The suite's own "compliance-can-pause" assertion pauses the bond -- without undoing that,
+// a second run would fail every mustSucceed assertion (and PASS every mustRevert one for the
+// wrong reason: contract-wide pause, not the policy under test) purely from leftover state.
+// Restore the bond to its pre-suite (unpaused) state so this script is actually rerunnable.
+console.log("\ncleanup: unpausing the bond so this suite is rerunnable...");
+{
+  const { execFile } = await import("node:child_process");
+  const { promisify } = await import("node:util");
+  const run = promisify(execFile);
+  await run("npx", ["tsx", "src/actions/set-pause.ts"], {
+    cwd: workspacePath,
+    env: { ...process.env, BOND_DIAMOND_ADDRESS: BOND, PAUSED: "false", HARNESS_SIGNER_PRIVATE_KEY: operatorKey },
+  });
+  console.log("cleanup: done.");
 }

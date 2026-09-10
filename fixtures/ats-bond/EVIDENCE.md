@@ -77,6 +77,66 @@ PASS  reject-unverified-transfer
    `gasLimit` and a `sendAndReport` helper that extracts the real transaction hash even when
    `tx.wait()` itself throws on a mined-but-reverted transaction — see `src/asset.ts`.
 
+## Independent review (2026-09-10) — findings and fixes
+
+Two independent review passes (one security-focused, one demo/reproducibility-focused) were
+run against this fixture and the harness fork's execution engine. Findings and what was done
+about each, most severe first:
+
+1. **Critical — a live signer private key had a path to a third-party LLM prompt and a
+   plaintext file, unredacted.** The repair-loop prompt writer (`attemptReporting.ts`) had no
+   secrets redaction at all, unlike the EVALUATE-stage prompt writer, which redacted only the
+   primary signer. **Fixed** in the Harness fork: `announceAttempt` now redacts every known
+   signer (primary + all named actors) before writing any attempt prompt to disk, and the
+   underlying `writePromptFile` also strips the bare (non-`0x`) hex form. This is genuinely the
+   more important of the two redaction layers — findings are now redacted at the source too
+   (chain-assertion/chain-deploy command output), but this fix closes the actual sink.
+2. **High, confirmed against this fixture's own real data — `reasonContains` could not
+   distinguish *why* an EVM transaction reverted.** Mirror Node's `result` field
+   (`CONTRACT_REVERT_EXECUTED`) is identical for every revert reason on a given contract;
+   `error_message` (the actual reason) was fetched but discarded. **Partially fixed**: the
+   evidence reader now decodes a standard Solidity `Error(string)` revert
+   (`require(condition, "message")`) into a human `revertReason`, and `reasonContains` checks
+   that when present. **Honest limitation, not fully closed**: ATS's own contracts revert with
+   **custom errors** (a different, gas-cheaper Solidity pattern — confirmed by decoding this
+   fixture's real `reject-unverified-transfer` revert, selector `0x796c1f0d`, not the standard
+   `Error(string)` selector), which cannot be decoded without that contract's own error ABI —
+   deliberately out of scope, since carrying ATS-specific ABIs in the generic harness would
+   violate the project's own "no PolicyProbe/ATS branding in generic Harness code" rule. This
+   fixture never actually uses `reasonContains` in its real assertions (only `mustSucceed`/
+   `mustRevert`), so no claim here was ever false — but the upstream recipe-authoring doc's
+   worked example has been corrected to state this limitation plainly rather than imply
+   universal support.
+3. **Medium, reproduced live during this fix — the policy suite was not actually rerunnable.**
+   `compliance-can-pause` pauses the bond with no corresponding unpause; a second run failed
+   `verified-transfer-succeeds` and `compliance-can-pause` from leftover state (confirmed by
+   literally hitting this failure mode running the suite for this review — see the two-run
+   sequence below). **Fixed**: `run-policy-suite.mjs` now unpauses the bond as its own last
+   step. Reran twice consecutively after the fix: **6/6 PASS both times**.
+4. **Medium — reproducibility gap.** The whitelist/issue/freeze/role-grant sequence the policy
+   suite depends on existed only as ad hoc, hand-typed calls during development, not as a
+   script anyone could rerun against a fresh deployment. **Fixed**: `02-setup-policy-fixtures.ts`
+   captures that exact sequence, tested against the live bond (every step succeeds; `issue` is
+   documented as the one non-idempotent step, since it mints additional tokens each run rather
+   than erroring on re-issue).
+5. **Medium — a Mirror Node fetch exception got zero retries while a 404 got the full retry
+   budget**, meaning an identical assertion against identical chain state could get a different
+   verdict purely from which poll happened to hit a one-off network blip. **Fixed**: fetch
+   exceptions now retry through the same backoff loop as a 404, and the final error message
+   reflects the most recent attempt rather than a stale one.
+6. Minor: `run-policy-suite.mjs`'s `primarySigner.evmAddress` was hardcoded to this session's
+   specific operator account. **Fixed** — now derived from `HEDERA_OPERATOR_KEY` via
+   `ethers.Wallet`, so the script works for any operator's credentials.
+7. Minor wording: README's "real regulated-security contract" tightened to "a contract
+   implementing ATS's regulated-security token pattern" to avoid any legal-claim misreading.
+
+Not fixed, accepted as documented limitations: (a) the harness has no general solution for an
+action script that fails to complete (non-zero exit/timeout) distinguishing infra from a script
+bug — recipe authors must use an explicit gas limit for `mustRevert` actions, as this fixture's
+own `sendAndReport` does, documented in its own comment; (b) no on-chain check that an `actor`
+genuinely holds/lacks the role a policy claims to test — the assertion trusts the recipe
+author's labeling, same as any test fixture trusts its own setup.
+
 ## Known ATS role-naming surprises (worth documenting for anyone else building on this)
 
 The "_MANAGER"-suffixed role does **not** gate the action of the same name — the base role does:
