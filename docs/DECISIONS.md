@@ -274,3 +274,54 @@ exists to catch before submission, not after a judge finds them.
 scope change — the ATS bond fixture and Harness engine are now both in a materially more
 trustworthy state, with the two remaining honest limitations (custom-error revert reasons,
 no on-chain role verification for actors) documented rather than silently accepted.
+
+## ADR-0010 — `fetchTokenBalance` fixed: not-yet-indexed token association was misread as a confirmed zero
+
+**Context:** the whole suite's earlier balance coverage tested `fetchTokenBalance` only against
+mocks and the operator's own pre-existing HBAR balance; the ATS bond fixture never exercised
+this code path at all (it's an EVM contract token, not native HTS — that's `ADR-0008`'s finding,
+handled by the separate `fetchContractTokenBalance`). No test had ever pointed this function at
+a genuine, freshly-created HTS token — the one asset shape it actually exists to read.
+
+**What was found:** adding exactly that test (create a real `TokenCreateTransaction`, read the
+treasury's balance immediately after the receipt) failed for real: `0n` instead of the minted
+`12345n`. A manual Mirror Node poll loop against the same account, run separately, found the
+correct balance present within ~3s — so this was not a case of the assertion being wrong, or of
+genuine multi-block propagation lag exceeding the 20s poll budget. It was a real bug:
+`entry?.balance ?? 0` made the extractor return a *defined* `0n` the moment the token's entry
+was merely absent from `/accounts/{id}`'s `balance.tokens[]`, which is indistinguishable, to the
+shared `pollForEvidence` retry loop, from "confirmed, no need to retry." Because the account
+endpoint itself answers 200 immediately (the account already existed), a brand-new token's
+not-yet-indexed entry was accepted as final on literally the very first poll, with zero retries
+ever attempted.
+
+**Fix:** the extractor now returns `undefined` (the existing "not there yet, keep polling"
+signal) while the entry is absent, exactly like a 404 already does. `pollForEvidence` gained an
+optional `fallbackOnHealthyTimeout` value — the real final answer to use only if *every* poll
+for the whole budget was healthy (200, just missing the shape); it is never used after any
+404/non-200/fetch failure, so genuine infra trouble still reports `infra-error`, never a silent
+zero. This keeps the pre-existing, honestly-documented ambiguity ("no association" vs "spent to
+exactly zero" both read as `0n` — HTS has no other representation of that distinction via this
+endpoint) but removes the *new* ambiguity this bug introduced ("not indexed yet" vs "confirmed
+zero"), which was strictly worse: it could cost a real balance-delta assertion its evidence
+window entirely, on the very first poll, for any workflow that creates a token and checks a
+balance against it soon after — a plausible real deploy-then-assert shape, not a contrived one.
+
+**New coverage:** a deterministic mock regression test (entry absent for two polls, present
+with a real non-zero balance on the third — reproducing the exact bug shape without depending
+on real testnet timing) plus the real-testnet test that surfaced the bug in the first place,
+now passing for real.
+
+**Evidence:** Harness fork commit `427a36f`. Full suite **277/277 pass** on real testnet (was
+275/275 before this fix; the 2 new tests are the mock regression test and the real-HTS-token
+test above).
+
+**Reason:** exactly the kind of gap this project's "never fabricate, never paper over a real
+failure" discipline exists to catch — the fix came from actually running the primitive against
+the real asset type it claims to support, not from code inspection alone.
+
+**Consequences:** `fetchTokenBalance` is now the third Mirror Node evidence reader (after
+`fetchTransactionResult`/`fetchContractCallResult` and `fetchContractTokenBalance`) confirmed
+against real testnet state for the specific asset shape it targets, not just mocks. No schema
+or recipe-authoring change — the existing `authoring-a-recipe.md` balance-delta documentation
+made no claim this bug contradicted.

@@ -1,9 +1,12 @@
 # Status
 
 **Last updated:** 2026-09-10
-**Phase:** 1–9, 11, and 12 complete (full assertion engine, ATS killer demo, adversarial review
-with fixes, before/after benchmark) → entering Phase 13 (upstream PR polish) and Phase 14
-(judge UI), with README/docs polish (15) and the demo video (16+) still ahead
+**Phase:** 1–12 complete (full assertion engine, ATS killer demo, adversarial review with
+fixes, before/after benchmark, two more real bugs found and fixed by exercising previously-
+untested code paths) → entering Phase 13 (upstream PR polish); Phase 14 (judge UI) deliberately
+paused per explicit user direction (2026-09-10: "except UI... work" — continue real
+development work, Judge UI excluded, until told otherwise), with README/docs polish (15) and
+the demo video (16+) still ahead
 
 **Note on timeline framing:** earlier status updates in this file were paced against the
 verified Sept 13 deadline. Per explicit direction from the user (2026-09-09), further work is
@@ -133,11 +136,29 @@ fixed — full detail in `docs/DECISIONS.md` ADR-0009, `fixtures/ats-bond/EVIDEN
   reproducible, not just describable.
 - Full harness suite: **267/267 pass**.
 
+## Phase 10 — closed two more real gaps found by exercising untested code paths (2026-09-10)
+
+Per user direction ("except UI... work" — keep doing real development work, Judge UI excluded)
+continued past Phase 9 rather than pausing at docs/UI. Both items below are real bugs found by
+actually running code against real testnet for the first time, not inspection:
+
+- **Fixed**: `executeCommand`'s spawn-level rejection (child-process `error` event — ENOENT/
+  EACCES/an unspawnable command) was previously uncaught in both `chainAssertions.ts`'s action
+  execution and `runChainDeploy`, crashing the whole attempt instead of producing a graceful
+  finding. Reproduced live with a genuinely nonexistent cwd, then fixed both call sites to
+  report `chain-assertion-infra`/`commands` findings instead. Harness fork commit `7231ca7`.
+- **Fixed**: `fetchTokenBalance` had never been exercised against a real native HTS token
+  anywhere in the suite (only mocks, HBAR, and an ATS bond — which is an EVM contract token,
+  not HTS). Adding that test surfaced a real bug: a brand-new token's balance entry, absent for
+  a few seconds from Mirror Node's `/accounts/{id}` response while the account endpoint itself
+  already answered 200, was misread as a confirmed `0n` with zero retries, instead of triggering
+  the existing retry loop. Fixed; full detail `docs/DECISIONS.md` ADR-0010. Harness fork commit
+  `427a36f`.
+- Full harness suite: **277/277 pass** on real testnet (up from 267/267; net of both fixes'
+  new tests).
+
 ## Unresolved
 
-- One deliberately deferred, documented limitation: `executeCommand` can reject (child-process
-  spawn error) uncaught anywhere in the chain-assertion call path — pre-existing gap shared
-  with `runChainDeploy`, not fixed here to avoid scope creep into unrelated existing code.
 - `reasonContains` cannot decode a custom-error revert reason (ADR-0009) — documented, not
   fixed, deliberately, to avoid coupling the generic engine to ATS-specific error ABIs.
 - No on-chain check that an `actor` genuinely holds/lacks the role a policy claims to test —
