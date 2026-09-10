@@ -18,10 +18,13 @@ const { runChainAssertions } = await import(
 const actors = JSON.parse(await readFile(new URL("./.actors.json", import.meta.url), "utf8"));
 const workspacePath = path.resolve(import.meta.dirname);
 
+import { ethers } from "ethers";
+
+const operatorKey = process.env.HEDERA_OPERATOR_KEY ?? "";
 const primarySigner = {
   accountId: process.env.HEDERA_OPERATOR_ID,
-  privateKeyHex: process.env.HEDERA_OPERATOR_KEY,
-  evmAddress: "0x5eDBC5E7e9100276E4c4F0D6C405fE4AD3B2b668",
+  privateKeyHex: operatorKey,
+  evmAddress: operatorKey ? new ethers.Wallet(operatorKey.startsWith("0x") ? operatorKey : `0x${operatorKey}`).address : "",
   network: "testnet",
 };
 
@@ -37,7 +40,7 @@ function reassertionSuite(bondAddress) {
       actor: "alice",
       action: {
         name: "attempt-transfer-to-attacker",
-        command: `BOND_DIAMOND_ADDRESS=${bondAddress} TARGET_ADDRESS=${actors.attacker.evmAddress} AMOUNT=1 npx tsx src/actions/transfer.ts`,
+        command: `npx cross-env BOND_DIAMOND_ADDRESS=${bondAddress} TARGET_ADDRESS=${actors.attacker.evmAddress} AMOUNT=1 npx tsx src/actions/transfer.ts`,
         timeoutMs: 30_000,
       },
       expect: { outcome: "mustRevert" },
@@ -77,7 +80,7 @@ async function run(label, bondAddress) {
 }
 
 const BROKEN_BOND = "0xeff72A209498C890e3583702bD7818570a5c9E03"; // isWhiteList: false -- no compliance gate at all
-const FIXED_BOND = "0x19CD7866076758E3AF6C79aD7Ce725331A5606B8"; // isWhiteList: true -- the corrected config
+const FIXED_BOND = "0x29d9c62fC1E8d2420010Ce243c6345dF9eB0b53a"; // isWhiteList: true -- the corrected config
 
 console.log("PolicyProbe killer demo: same assertion, same policy, real Hedera testnet both times.");
 const before = await run("BEFORE (misconfigured bond -- compliance gating left off)", BROKEN_BOND);

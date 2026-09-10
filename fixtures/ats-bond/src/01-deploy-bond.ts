@@ -8,12 +8,12 @@ const result = await deployBond({
   signer,
   name: "Atlas Infrastructure Note 2027",
   symbol: "AINX27",
-  isin: "USPLCYPROB37",
+  isin: "USPLCYPROB86",
   maxSupply: 1_000_000,
   currency: "0x555344", // USD
   nominalValue: 1000,
   maturityYears: 1,
-  isWhiteList: false,
+  isWhiteList: true,
 });
 
 console.log(`submitted ${result.transactionId}`);

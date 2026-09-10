@@ -11,7 +11,8 @@ not a self-deployed system — see `docs/DECISIONS.md` for why.
 
 | Bond | Diamond address | Config | Deploy tx |
 |---|---|---|---|
-| **Fixed** — "Atlas Infrastructure Note 2027" | `0x19CD7866076758E3AF6C79aD7Ce725331A5606B8` | `isWhiteList: true` | `0x483922db058fd105577d8087bdf449b41854e80647d756f1de4958e0a24c6aa2` |
+| **Fixed (Session 2026-09-11)** — "Atlas Infrastructure Note 2027" | `0x29d9c62fC1E8d2420010Ce243c6345dF9eB0b53a` | `isWhiteList: true` | `0xc2b8cc004f862abeec6dd455df92ff5feaa602cdbdf53e2d8c4f3bc0711d2d94` |
+| **Fixed (Prior session)** — "Atlas Infrastructure Note 2027" | `0x19CD7866076758E3AF6C79aD7Ce725331A5606B8` | `isWhiteList: true` | `0x483922db058fd105577d8087bdf449b41854e80647d756f1de4958e0a24c6aa2` |
 | **Broken** (killer demo "before") | `0xeff72A209498C890e3583702bD7818570a5c9E03` | `isWhiteList: false` — compliance gating left off | `0x44db454238b929e18a287c908d05bb4473cd94588ba8fc9022dd5bffc1749387` |
 | Abandoned attempt (internal KYC / VC-issuer path, too deep for this fixture's scope) | `0xBce4fBebBB5188e8F8e5A1f15A18589595DaEdD8` | `internalKycActivated: true` | `0x96063c55a83fe019edbebaf0482a27b117c2d22f7c663db48893411544002ff7` |
 

@@ -16,7 +16,7 @@ const { runChainAssertions } = await import(
 );
 
 const actors = JSON.parse(await readFile(new URL("./.actors.json", import.meta.url), "utf8"));
-const BOND = "0x19CD7866076758E3AF6C79aD7Ce725331A5606B8";
+const BOND = "0x29d9c62fC1E8d2420010Ce243c6345dF9eB0b53a";
 const workspacePath = path.resolve(import.meta.dirname);
 
 function toChainSigner(actor) {
@@ -35,7 +35,7 @@ const primarySigner = {
 
 const action = (name, script, env = {}) => ({
   name,
-  command: `BOND_DIAMOND_ADDRESS=${BOND} ${Object.entries(env)
+  command: `npx cross-env BOND_DIAMOND_ADDRESS=${BOND} ${Object.entries(env)
     .map(([k, v]) => `${k}=${v}`)
     .join(" ")} npx tsx src/actions/${script}.ts`,
   timeoutMs: 30_000,
@@ -130,6 +130,7 @@ console.log("\ncleanup: unpausing the bond so this suite is rerunnable...");
   const run = promisify(execFile);
   await run("npx", ["tsx", "src/actions/set-pause.ts"], {
     cwd: workspacePath,
+    shell: true,
     env: { ...process.env, BOND_DIAMOND_ADDRESS: BOND, PAUSED: "false", HARNESS_SIGNER_PRIVATE_KEY: operatorKey },
   });
   console.log("cleanup: done.");

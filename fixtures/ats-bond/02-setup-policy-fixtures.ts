@@ -39,6 +39,7 @@ async function action(script: string, env: Record<string, string>, signerKey = O
   try {
     const { stdout } = await run("npx", ["tsx", `src/actions/${script}.ts`], {
       cwd: workspacePath,
+      shell: true,
       env: { ...process.env, BOND_DIAMOND_ADDRESS: BOND, HARNESS_SIGNER_PRIVATE_KEY: signerKey, ...env },
     });
     console.log(`   ${stdout.trim()}`);
