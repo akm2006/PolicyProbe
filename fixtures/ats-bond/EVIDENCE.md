@@ -129,6 +129,25 @@ about each, most severe first:
    `ethers.Wallet`, so the script works for any operator's credentials.
 7. Minor wording: README's "real regulated-security contract" tightened to "a contract
    implementing ATS's regulated-security token pattern" to avoid any legal-claim misreading.
+8. **Real, previously-undiscovered gap found by rerunning the suite fresh (2026-09-10),
+   `fetchTokenBalance` misreading a not-yet-indexed HTS token association as a confirmed zero
+   balance.** Not triggered by this fixture (an ATS bond is a contract token, not native HTS —
+   see finding 2's `{contract}` asset shape), but found and fixed in the Harness fork while
+   adding this fixture's first-ever test of that function against a real HTS token. Full detail:
+   `docs/DECISIONS.md` ADR-0010, harness fork commit `427a36f`.
+9. **Medium, reproduced live — `TX_OVERRIDES.gasLimit: 1_000_000` demanded ~2.34 HBAR just to
+   *attempt* any write call**, regardless of gas actually used (the relay's
+   "insufficient funds for intrinsic transaction cost" check reserves `gasLimit * gasPrice` up
+   front). Alice's balance had drifted below that reservation threshold after many repeated
+   suite runs across this session, failing three assertions with `INSUFFICIENT_FUNDS` — even
+   though her balance (2.238 ℏ) was comfortably above what a transfer actually costs
+   (confirmed via a real transaction's Mirror Node receipt: `gas_used: 438652`, ~40% of the
+   limit). **Fixed**: reduced to `700_000` (~60% headroom over the highest real usage measured),
+   roughly halving the effective minimum balance every actor needs to carry; funded Alice back
+   up as an immediate unblock. Reran the suite three times consecutively after the fix: **6/6,
+   6/6, then 5/6** — the one failure was a genuine transient Mirror Node fetch blip, correctly
+   classified `chain-assertion-infra` (not a false policy verdict), confirming the infra-vs-
+   violation distinction holds in practice, not just in tests.
 
 Not fixed, accepted as documented limitations: (a) the harness has no general solution for an
 action script that fails to complete (non-zero exit/timeout) distinguishing infra from a script

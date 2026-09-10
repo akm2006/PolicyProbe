@@ -115,6 +115,7 @@ for (const assertion of assertions) {
   if (finding) {
     console.log(`      ${finding.message}`);
     if (finding.evidence) console.log(`      evidence: ${JSON.stringify(finding.evidence)}`);
+    if (finding.details) console.log(`      details: ${finding.details}`);
   }
 }
 

@@ -29,8 +29,18 @@ export function connectAsset(signer = getSigner()) {
  * broadcasting it* -- meaning no transaction id/receipt would exist for the chain-assertion
  * engine to independently verify. A mustRevert assertion needs the revert to actually happen
  * on-chain, not just be predicted locally.
+ *
+ * 700,000, not 1,000,000: the Hedera JSON-RPC relay's "insufficient funds for intrinsic
+ * transaction cost" check reserves `gasLimit * gasPrice` up front, regardless of gas actually
+ * used -- confirmed against a real transfer's Mirror Node receipt (`gas_used: 438652` against
+ * the relay's observed ~2340 gwei gas price), a 1,000,000 limit demanded ~2.34 HBAR just to
+ * *attempt* a call, well above what any of this fixture's actions actually spend. A signer
+ * whose balance had drifted below that reservation threshold (but was still well above what a
+ * transfer actually costs) failed with INSUFFICIENT_FUNDS on every subsequent run -- confirmed
+ * live. 700,000 keeps ~60% headroom over the highest real usage measured while roughly halving
+ * the effective minimum balance every actor needs to carry.
  */
-export const TX_OVERRIDES = { gasLimit: 1_000_000 };
+export const TX_OVERRIDES = { gasLimit: 700_000 };
 
 /**
  * Sends a contract write and reports its outcome the way the chain-assertion engine needs:
