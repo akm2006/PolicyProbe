@@ -227,3 +227,50 @@ criteria, not requirements) — `docs/ACCEPTANCE_CRITERIA.md` reflects this as a
 line, not an oversight. Two real Harness-fork bugs were found and fixed as a direct result of
 this integration attempt (EVM transaction hash support, `mustRevert` gas-limit requirement) —
 recorded in the Harness fork's own commit `810f0c7` and `fixtures/ats-bond/EVIDENCE.md`.
+
+---
+
+## ADR-0009 — Adversarial review round 2: critical redaction gap, revert-reason limits, fixture idempotency
+
+**Date:** 2026-09-10
+**Decision:** Ran two independent review passes (`security-validator`, `demo-auditor`) against
+the finished engine and fixture, fixed every well-evidenced finding, and honestly documented
+the one that can't be fully closed without violating the project's own genericity rule.
+**What was found and fixed** (full detail: Harness fork commit `99f01f7`, fixture commit
+`e3a5cc8`, `fixtures/ats-bond/EVIDENCE.md` §"Independent review"):
+1. **Critical**: the repair/generate-loop prompt writer had zero secret redaction — a real gap
+   distinct from, and more severe than, the source-level redaction added in ADR-0007's review
+   round, since this is the sink that reaches a third-party LLM API call. Fixed at both the
+   sink (`attemptReporting.ts`, now redacts every signer) and confirmed the source-level
+   redaction (`chainAssertions.ts`, `runChainDeploy`) covers the pre-existing deploy path too,
+   not just the new chain-assertion path.
+2. **High**: `reasonContains` couldn't distinguish *why* an EVM transaction reverted — Mirror
+   Node's coarse status string is identical for every reason. Partially fixed (standard
+   `Error(string)` reverts now decode); honestly **not** fully closed — ATS's own contracts use
+   custom errors, which can't be decoded without that contract's ABI, and carrying ATS-specific
+   ABIs in the generic engine would violate "no ATS branding in generic Harness code." Confirmed
+   the real fixture never actually used `reasonContains`, so no prior claim was false; corrected
+   the recipe-authoring doc's example to state the limitation rather than imply universal support.
+3. **Medium, reproduced live**: the ATS fixture's own policy suite wasn't rerunnable — a pause
+   step with no unpause meant a second run failed for reasons unrelated to the policy under
+   test. Hit this exact failure while fixing it (the bond was still paused from earlier manual
+   testing), then fixed and reran twice consecutively for real confirmation.
+4. **Medium**: the fixture's setup sequence (whitelist/issue/freeze/role-grant) existed only as
+   ad hoc commands during development, not a reusable script — a real reproducibility gap for
+   anyone following the README from scratch. Added `02-setup-policy-fixtures.ts`.
+5. **Medium**: a thrown Mirror Node fetch got zero retries while a 404 got the full budget —
+   fixed for consistency; documented the resulting latency tradeoff rather than hiding it.
+**Process note**: one of the two `security-validator` agent spawns overrode an unrelated
+literal instruction in favor of self-directed review matching its role definition — filed as
+model-behavior feedback, not treated as a project defect, but worth knowing about if reusing
+this subagent for narrow non-review tasks in future sessions.
+**Evidence:** Harness fork `npm test` **267/267 pass**; fixture policy suite reran twice
+consecutively post-fix, **6/6 PASS both times** (the second run is the actual proof of the
+idempotency fix, not just a code inspection).
+**Reason:** a security-critical secret-handling gap and a reproducibility claim that didn't
+hold under a literal rerun are exactly the class of finding this project's review discipline
+exists to catch before submission, not after a judge finds them.
+**Consequences:** `docs/AI_USAGE.md`'s existing disclosure already covers this work. No further
+scope change — the ATS bond fixture and Harness engine are now both in a materially more
+trustworthy state, with the two remaining honest limitations (custom-error revert reasons,
+no on-chain role verification for actors) documented rather than silently accepted.
