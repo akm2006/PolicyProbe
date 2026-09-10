@@ -69,3 +69,16 @@ reproducible. Script skeleton: winning-package §16.
 **Blocks:** nothing critical-path; only do after core package is stable, and only on request.
 **Steps:** n/a until requested.
 **Expected result:** n/a.
+
+## 8. Decide on AI-authorship balance before submission
+
+**Why:** ETHOnline's AI disclosure rule says AI should assist, not create entire projects, and
+over-reliance may disqualify work from partner prizes. `docs/AI_USAGE.md` honestly discloses
+that nearly all code/docs in both repos were authored end-to-end by Claude Code — this is a real
+eligibility consideration, not a formality.
+**Blocks:** final submission — this needs a decision, not silence.
+**Steps:** read `docs/AI_USAGE.md` in full, decide whether the current authorship balance is
+one you want to present as-is, or whether specific submission-facing artifacts (README
+narrative, technical note, demo script) should get more direct human authorship first.
+**Expected result:** either explicit sign-off on the current disclosure, or specific direction
+on what to rewrite by hand before submission.
