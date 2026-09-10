@@ -1,9 +1,53 @@
 # Competitor / Collision Audit
 
-**Last checked: 2026-09-08**, against `hedera-dev/hedera-harness` open PRs/issues (all states
-current at check time — re-run `gh pr list --repo hedera-dev/hedera-harness --state open` and
+**Last checked: 2026-09-10** (previously 2026-09-08), against `hedera-dev/hedera-harness` open
+PRs/issues — re-run `gh pr list --repo hedera-dev/hedera-harness --state open` and
 `gh issue list --repo hedera-dev/hedera-harness --state open` before every Harness milestone;
-this repo moves multiple PRs/day during the event).
+this repo is gaining several new PRs per day during the event, nearly all from different
+independent contributors.
+
+## 2026-09-10 re-check: 5 new PRs since last audit, several close to our territory — verdict below
+
+New since 2026-09-08: **#47, #48, #49, #50, #54, #51, #52, #53, #55**. Of these, three land close
+enough to warrant a full read (title, body, files touched), not just the title:
+
+- **#50 "verify on-chain effects against the mirror node"** — adds `validation/mirrorNode.ts`;
+  after `runChainDeploy`'s commands exit 0, queries the ephemeral signer's *own recent
+  transaction history* on Mirror Node and fails the attempt if none reached consensus with
+  success. Single signer, single implicit expectation ("something succeeded"), no per-action
+  declared policy, no expected-*failure* case, no actor identities, no balance/state check.
+  This closes the exact gap PR #39 (still open) also targets — a maintainer-side scheduling
+  question, not ours.
+- **#49 "native CHAIN support for SDK app servers and Mirror Node verify"** — adds
+  `chainValidation.verify.transactionTypes` (poll for successful payer-bound transactions,
+  filtered by type) and `expose.appEnv` (inject the signer into a native-SDK app server's
+  process, not just the browser). Its Mirror Node evidence is explicitly **attached to
+  EVALUATE** ("attach proofs to EVALUATE") — enriching what the LLM evaluator sees, not
+  replacing its judgment with an independent deterministic verdict. No expected-revert case, no
+  actor identities, no balance delta. **Touches the same files our diff touches**
+  (`attemptStages.ts`, `chainSigner.ts`, `specLoader.ts`, `types.ts`) — a real *file-level* merge
+  consideration once one of us rebases onto a `dev` that has the other, but not a *feature*
+  duplication.
+- **#54 "Tier 3.5 x402Settlement mirror-node verification"** — narrowly scoped to the x402
+  micropayment protocol's settlement flow, verified through the EVALUATE validator prompt
+  (LLM-driven). Unrelated to our general assertion mechanism.
+
+**Verdict unchanged, restated precisely against these three:** none of them let a recipe author
+declare *"this specific action must succeed, or must be rejected, as adversarial actor X"* and
+get a typed, LLM-independent finding back. All three either (a) generically confirm "the
+deploy's signer did *something* successful" (a coarser, single-outcome, single-identity check),
+or (b) feed richer evidence to the probabilistic EVALUATE step. Our differentiator — expected
+**failure** as a first-class outcome, multiple named adversarial/authorized actor identities in
+one assertion set, and balance/state postconditions, all deterministic and independent of any
+LLM — is still unaddressed by any open PR as of this check.
+
+**Action taken:** none required beyond this audit entry — no rescoping. Re-verify file-level
+conflict risk with #49 specifically before opening our own PR, since it touches the identical
+files.
+
+---
+
+## Audit as of 2026-09-08 (superseded above, kept for history)
 
 ## Open PRs at check time
 
