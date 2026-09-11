@@ -1,106 +1,59 @@
-# Before/After Benchmark
+# Measured benchmark
 
-Real, measured numbers from this repository's own history — nothing here is a projected or
-hypothetical figure. Where a metric would require an experiment not yet run, it's marked as
-such rather than estimated. See `docs/PROJECT_CHARTER.md` for the thesis this is measuring.
+Measurements compare the Harness feature branch with
+`hedera-dev/hedera-harness:dev` at `587a2f335c29835e9505d9f13e230b8d677c0674`.
 
-## 1. What existed before, measured against `dev` @ `587a2f335c29835e9505d9f13e230b8d677c0674`
+## Capability change
 
-Confirmed by reading source directly (`docs/HARNESS_ARCHITECTURE.md`), not by assumption:
+| Measure | Base | Feature branch |
+|---|---:|---:|
+| Declarative action-outcome assertion families | 0 | 2: outcome and balance delta |
+| Named assertion actors | 0 | Supported |
+| Typed policy/infrastructure finding categories | 0 | 2 |
+| Harness tests | 195 | 277 |
 
-- **Zero lines of deterministic on-chain postcondition code existed.** `ValidationFinding.category`
-  had no slot for "an executed action's outcome vs. a declared expectation." The only path that
-  touched real chain state after a transaction was EVALUATE — an LLM reading a checklist,
-  probabilistic by construction, not reproducible run-to-run in the way a `mustRevert`/`mustSucceed`
-  comparison against a Mirror Node record is.
-- A recipe author wanting "unverified investor must not receive this asset" checked
-  deterministically had exactly two options: (a) ask the EVALUATE agent to judge it from the UI
-  (no guaranteed determinism, no independent chain evidence attached to the verdict), or (b) fork
-  Harness itself and add the capability from scratch — which is what this project did.
+The actor boundary composes with both assertion families rather than adding another evidence
+primitive.
 
-## 2. What the new capability costs, once (written to the shared engine, not per-recipe)
+## Diff size
 
-Measured via `git diff dev --stat` on the Harness fork's working branch:
+Measured with `git diff --stat upstream/dev` after the cleanup:
 
-| | Lines |
-|---|---|
-| Core engine (`chainAssertionEvidence.ts` + `chainAssertions.ts`) | 522 |
-| Schema/wiring touch points (`types.ts`, `specLoader.ts`, `attemptStages.ts`, `promptBuilder.ts`, `chainSigner.ts`) | 332 |
-| **Total implementation** | **854** |
-| Tests (5 new/changed test files) | 1,107 |
-| **Total diff vs. `dev`** (18 files) | **2,163 insertions, 22 deletions** |
+- 21 files changed
+- 2,885 insertions and 36 deletions
+- 1,174 production and prompt insertions
+- 1,599 test insertions across seven test files
+- 112 documentation insertions
+- 82 tests added to the full Harness suite
 
-Test code outweighs implementation code roughly **1.3:1** — a deliberate ratio, not a side
-effect: every new code path (found/not-found/infra-error × 2 evidence sources, actor
-resolution, exit-code/timeout classification, balance-delta direction) has a dedicated negative
-test, per `docs/OPERATING_CONTRACT.md`'s testing discipline.
+A typical transaction-outcome assertion adds about six lines to a recipe. The shared engine owns
+command execution, identifier extraction, Mirror Node polling, outcome comparison, findings,
+actor lifecycle, and redaction.
 
-**59 new tests**, full suite **195 → 254**, all passing with real testnet credentials.
+## Local verification
 
-## 3. What one recipe author now pays, per assertion
+On Windows with Node 22:
 
-From the real ATS fixture (`fixtures/ats-bond/run-policy-suite.mjs`), one complete assertion:
+- Harness TypeScript typecheck: pass
+- Harness build via direct `tsc`: pass
+- Feature-focused suites: 75 pass, 0 fail, 6 credential-gated live tests skipped
+- Full direct suite: 257 pass, 14 fail, 6 skipped
+- ATS fixture TypeScript build: pass
+- ATS fixture production dependency audit: 0 known vulnerabilities
 
-```js
-{
-  id: "reject-unverified-transfer",
-  description: "Unverified investor must not receive the bond",
-  actor: "alice",
-  action: { name: "attempt-transfer-to-attacker", command: "..." },
-  expect: { outcome: "mustRevert" },
-}
-```
+The 14 full-suite failures are pre-existing Windows assumptions in upstream tests, including
+POSIX `true`, path-separator assertions, and process-group signal behavior. The feature-focused
+tests are portable after this cleanup. The canonical `npm test` script also uses POSIX `rm` and
+therefore requires Linux or macOS until upstream Windows support lands. A fresh Linux CI run is a
+publication gate.
 
-**~6 lines of declarative configuration** per policy, reusing a shared engine — no HTTP polling,
-no Mirror Node response parsing, no evidence classification, no finding construction. The
-`action.command` line is the one piece every approach needs regardless (something has to
-perform the real on-chain action); the verification logic above it — the part that used to not
-exist at all — is the `expect: {...}` line and the wiring that reads it.
+## Testnet evidence
 
-## 4. Assertion primitives available (before: 0; after: 3 composable families)
+The recorded ATS run evaluates six policies and reports six passes. The before/after comparison
+detects a whitelist-disabled bond because the forbidden transfer succeeds, then passes against
+the corrected bond when the same transfer reverts. See
+[`fixtures/ats-bond/EVIDENCE.md`](../fixtures/ats-bond/EVIDENCE.md) for the disclosed contract and
+transaction identifiers.
 
-1. Transaction outcome (`mustSucceed` / `mustRevert`, with optional `reasonContains` narrowing).
-2. State/balance delta (HBAR or HTS token, exact signed integer, before/after sampled via
-   independent Mirror Node reads).
-3. Actor-authorization boundary — not a fourth primitive, a composition of (1) over distinct
-   named signers (`chainValidation.actors`).
-
-Demonstrated exercising all three against the real ATS bond: 6 assertions, 6 distinct policies,
-zero bespoke per-policy code beyond the declaration shown in §3 — see
-`fixtures/ats-bond/EVIDENCE.md`.
-
-## 5. False PASS / false FAIL rate in controlled scenarios
-
-Every found/not-found/infra-error branch of the evidence reader, and every
-misclassification-risk path the independent review surfaced (action exit code, EVM vs. native
-transaction id, balance-delta config errors), has a dedicated test asserting the *correct*
-category — see `docs/DECISIONS.md` ADR-0007 for the specific defect class (infra misclassified
-as violation) this discipline caught and fixed **before** it could produce a wrong verdict in
-the wild. Measured result: **0 false positives, 0 false negatives** across 59 new tests, 0
-flaky failures across every full-suite run this session (multiple runs, `npm test`, both with
-and without live credentials).
-
-## 6. Time to catch an intentionally injected defect (the killer demo)
-
-- Defect: a bond deployed with compliance gating left off (`isWhiteList: false`) — a realistic
-  issuer misconfiguration, not a contrived bug.
-- Detection: **one assertion run**, one real testnet transaction, real Mirror Node confirmation
-  — caught with the exact violating transaction hash as evidence
-  (`0x829ffc215b7fb043912de052c0bb43da9a2152df6797a075fdeb9254a3c4adc7`, `SUCCESS` when policy
-  required a revert). Wall-clock: single-digit seconds of consensus/mirror latency, not a
-  multi-minute EVALUATE agent session.
-- Same assertion id, corrected configuration, rerun: **PASS**, `0/1` finding.
-
-**Not yet run, marked honestly as a gap rather than assumed:** a controlled comparison of
-whether the *existing* EVALUATE semantic validator, pointed at the same broken bond and asked
-to check compliance rules generally, would catch this defect at all, and how reliably across
-repeated runs. This is the single most informative experiment left for the benchmark and is
-next on the list precisely because a plausible-sounding claim without it would violate this
-project's own "no fabricated evidence" rule.
-
-## Method notes
-
-- All line counts from `wc -l` and `git diff --stat` on real files, reproduced in
-  `docs/STATUS.md`'s session history.
-- No workload was shaped to flatter these numbers — the assertion count, test count, and diff
-  size are simply what the finished feature and its tests are.
+No repeated-run false-positive/false-negative rate is claimed; that would require a separately
+designed experiment.

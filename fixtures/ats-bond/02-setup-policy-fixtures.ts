@@ -1,7 +1,7 @@
 #!/usr/bin/env -S npx tsx
 /**
  * Provisions a freshly-deployed bond into the exact state run-policy-suite.mjs and
- * run-killer-demo.mjs's "fixed" bond assume: roles granted, Alice/Bob/Carol whitelisted,
+ * run-before-after-demo.mjs's "fixed" bond assume: roles granted, Alice/Bob/Carol whitelisted,
  * Alice/Carol issued tokens, Carol frozen. Safe to rerun -- verified empirically, not just
  * assumed: role grants, control-list adds, and re-freezing an already-frozen address all
  * genuinely no-op on ATS's contracts (confirmed by rerunning this script against an

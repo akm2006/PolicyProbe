@@ -6,6 +6,7 @@ import {
   IPause__factory,
   IAccessControl__factory,
   ITransfer__factory,
+  IControlList__factory,
 } from "@hashgraph/asset-tokenization-contracts";
 import { getSigner } from "./signers.js";
 import { requireEnv } from "./signers.js";
@@ -13,13 +14,17 @@ import { requireEnv } from "./signers.js";
 /** All facets share one diamond address -- connect whichever facet interface a script needs. */
 export function connectAsset(signer = getSigner()) {
   const diamond = requireEnv("BOND_DIAMOND_ADDRESS");
+  // The ATS package publishes CommonJS-generated ethers types. At runtime this is the same
+  // ethers v6 ContractRunner; the cast contains the module-format type split at this boundary.
+  const runner = signer as unknown as Parameters<typeof IAsset__factory.connect>[1];
   return {
-    asset: IAsset__factory.connect(diamond, signer),
-    kyc: IKyc__factory.connect(diamond, signer),
-    freeze: IFreeze__factory.connect(diamond, signer),
-    pause: IPause__factory.connect(diamond, signer),
-    accessControl: IAccessControl__factory.connect(diamond, signer),
-    transfer: ITransfer__factory.connect(diamond, signer),
+    asset: IAsset__factory.connect(diamond, runner),
+    kyc: IKyc__factory.connect(diamond, runner),
+    freeze: IFreeze__factory.connect(diamond, runner),
+    pause: IPause__factory.connect(diamond, runner),
+    accessControl: IAccessControl__factory.connect(diamond, runner),
+    transfer: ITransfer__factory.connect(diamond, runner),
+    controlList: IControlList__factory.connect(diamond, runner),
   };
 }
 

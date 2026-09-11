@@ -36,6 +36,8 @@ npm-debug.log*
 .DS_Store
 .vscode/
 .idea/
+.playwright-mcp/
+graphify-out/
 
 # Foundry
 broadcast/

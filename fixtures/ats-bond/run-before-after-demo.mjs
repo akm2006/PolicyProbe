@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The killer demo: the exact same deterministic chain assertion, run first against a
+ * Before/after comparison: the exact same deterministic chain assertion, run first against a
  * deliberately misconfigured bond (compliance gating left off -- a realistic issuer mistake),
  * then against the correctly configured one. Same assertion id, same policy, same actors --
  * only the deployed app differs. This is PolicyProbe's central "broken policy caught, then
@@ -80,9 +80,9 @@ async function run(label, bondAddress) {
 }
 
 const BROKEN_BOND = "0xeff72A209498C890e3583702bD7818570a5c9E03"; // isWhiteList: false -- no compliance gate at all
-const FIXED_BOND = "0x29d9c62fC1E8d2420010Ce243c6345dF9eB0b53a"; // isWhiteList: true -- the corrected config
+const FIXED_BOND = "0x19CD7866076758E3AF6C79aD7Ce725331A5606B8"; // isWhiteList: true -- the corrected config
 
-console.log("PolicyProbe killer demo: same assertion, same policy, real Hedera testnet both times.");
+console.log("PolicyProbe before/after comparison: same assertion and policy on Hedera testnet.");
 const before = await run("BEFORE (misconfigured bond -- compliance gating left off)", BROKEN_BOND);
 const after = await run("AFTER (fixed: compliance gating enabled)", FIXED_BOND);
 

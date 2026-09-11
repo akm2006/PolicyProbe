@@ -1,14 +1,15 @@
 /**
  * Adapted from hashgraph/asset-tokenization-studio
- * (packages/ats/contracts/scripts/domain/factory/deployBondToken.ts), commit pinned in
- * docs/RESEARCH_SOURCES.md. SPDX-License-Identifier: Apache-2.0.
+ * (packages/ats/contracts/scripts/domain/factory/deployBondToken.ts) from
+ * hashgraph/asset-tokenization-studio release v.8.0.0-ats, commit
+ * be4f860e408ec5b1a24d12feb6f872aabff69319. SPDX-License-Identifier: Apache-2.0.
  *
  * Ported (not imported) because `scripts/domain` is not part of the published
  * @hashgraph/asset-tokenization-contracts package -- only contracts/artifacts/typechain-types
  * are. Adapted to take a plain ethers.Signer (this fixture's headless model) instead of a
  * hardhat fixture-injected factory contract instance.
  */
-import { ethers, type EventLog } from "ethers";
+import { ethers } from "ethers";
 import {
   IFactory__factory,
   ResolverProxy__factory,
@@ -38,13 +39,16 @@ export interface DeployedBond {
 
 /** Deploys a bond via the existing ATS testnet factory. Returns the new diamond's address. */
 export async function deployBond(params: DeployBondParams): Promise<DeployedBond> {
-  const factory: IFactory = IFactory__factory.connect(ATS_TESTNET.factory.evmAddress, params.signer);
+  // ATS publishes CommonJS-generated ethers types. Runtime compatibility is unchanged; keep
+  // the ESM/CommonJS identity mismatch contained at the generated factory boundary.
+  const runner = params.signer as unknown as Parameters<typeof IFactory__factory.connect>[1];
+  const factory: IFactory = IFactory__factory.connect(ATS_TESTNET.factory.evmAddress, runner);
   const deployerAddress = await params.signer.getAddress();
 
   const now = Math.floor(Date.now() / 1000);
   const maturityDate = now + params.maturityYears * 365 * 24 * 60 * 60;
 
-  const rbacs: IFactory.RbacStruct[] = [{ role: ROLES.DEFAULT_ADMIN_ROLE, members: [deployerAddress] }];
+  const rbacs = [{ role: ROLES.DEFAULT_ADMIN_ROLE, members: [deployerAddress] }];
 
   const securityData: IFactory.SecurityDataStruct = {
     resolver: ATS_TESTNET.businessLogicResolver.evmAddress,
@@ -90,7 +94,7 @@ export async function deployBond(params: DeployBondParams): Promise<DeployedBond
     additionalSecurityData: {
       countriesControlListType: true,
       listOfCountries: "",
-      info: "PolicyProbe demonstration fixture -- technical behavioral conformance testing only, not a real securities offering.",
+      info: "Technical behavioral conformance fixture; not a securities offering.",
     },
   };
 
@@ -98,18 +102,19 @@ export async function deployBond(params: DeployBondParams): Promise<DeployedBond
   const receipt = await tx.wait();
   if (!receipt) throw new Error("deployBond transaction produced no receipt.");
 
+  type DeploymentEvent = { eventName: string; args?: { bondAddress?: string; 1?: string } };
   const event = receipt.logs.find(
-    log => "eventName" in log && (log as EventLog).eventName === "BondDeployed",
-  ) as EventLog | undefined;
+    log => "eventName" in log && (log as unknown as DeploymentEvent).eventName === "BondDeployed",
+  ) as unknown as DeploymentEvent | undefined;
   if (!event || !event.args) {
     throw new Error(
       `BondDeployed event not found. Logs seen: ${JSON.stringify(
-        receipt.logs.filter(log => "eventName" in log).map(log => (log as EventLog).eventName),
+        receipt.logs.filter(log => "eventName" in log).map(log => (log as unknown as DeploymentEvent).eventName),
       )}`,
     );
   }
 
-  const diamondEvmAddress: string = event.args.bondAddress ?? event.args[1];
+  const diamondEvmAddress = event.args.bondAddress ?? event.args[1];
   if (!diamondEvmAddress || diamondEvmAddress === ethers.ZeroAddress) {
     throw new Error(`Invalid diamond address from BondDeployed event args: ${JSON.stringify(event.args)}`);
   }
@@ -117,6 +122,6 @@ export async function deployBond(params: DeployBondParams): Promise<DeployedBond
   return {
     diamondEvmAddress,
     transactionId: tx.hash,
-    bond: ResolverProxy__factory.connect(diamondEvmAddress, params.signer),
+    bond: ResolverProxy__factory.connect(diamondEvmAddress, runner),
   };
 }

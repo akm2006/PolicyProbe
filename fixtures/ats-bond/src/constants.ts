@@ -1,7 +1,8 @@
 /**
  * Adapted from hashgraph/asset-tokenization-studio
  * (packages/ats/contracts/scripts/domain/constants.ts and atsRoles.generated.ts),
- * commit pinned in docs/RESEARCH_SOURCES.md. SPDX-License-Identifier: Apache-2.0.
+ * release v.8.0.0-ats at be4f860e408ec5b1a24d12feb6f872aabff69319.
+ * SPDX-License-Identifier: Apache-2.0.
  *
  * Only the subset this fixture actually uses is ported here, not the full registry --
  * see policy-probe/docs/DECISIONS.md for why (avoid vendoring the whole monorepo for a

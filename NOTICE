@@ -1,0 +1,8 @@
+PolicyProbe
+Copyright 2026 Manobendra Mandal
+
+Portions of fixtures/ats-bond/src/deployBond.ts are adapted from
+hashgraph/asset-tokenization-studio, release v.8.0.0-ats at commit
+be4f860e408ec5b1a24d12feb6f872aabff69319, licensed under Apache-2.0.
+
+Hedera, Hashgraph, and related names may be trademarks of their respective owners.
