@@ -66,7 +66,7 @@ flowchart LR
 ```
 
 The implementation lives on the sibling Harness fork branch
-`policyprobe/deterministic-onchain-postconditions`. This repository contains the reproducible
+`feat/deterministic-onchain-postconditions`. This repository contains the reproducible
 ATS fixture, evidence, architecture notes, benchmark, and prepared upstream PR description.
 See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for the execution and trust boundaries.
 
