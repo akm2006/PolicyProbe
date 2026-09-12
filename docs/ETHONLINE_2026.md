@@ -7,7 +7,8 @@ event-specific material out of the normal product documentation.
 ## Submission assets
 
 - Public PolicyProbe repository URL
-- Public Harness fork branch and open PR targeting `hedera-dev/hedera-harness:dev`
+- [Open Harness PR #74](https://github.com/hedera-dev/hedera-harness/pull/74), targeting `dev`
+- [Passing Ubuntu CI](https://github.com/akm2006/PolicyProbe/actions/runs/34677303566)
 - Demo video with human narration
 - Testnet evidence in `fixtures/ats-bond/EVIDENCE.md`
 - AI disclosure in `docs/AI_USAGE.md`
@@ -21,5 +22,6 @@ event-specific material out of the normal product documentation.
 5. Show the confirmed on-chain revert and passing verdict.
 6. Briefly show the six-policy ATS suite and the upstream Harness diff.
 
-Before submission, replace any placeholder links after publication, run Linux CI on both public
-branches, open the upstream PR, record the final video, and verify the event form requirements.
+Before submission, ensure the final web app and README are available from the public repository,
+record the 2–4 minute demo, select the Hedera Open Source prize in the ETHGlobal form, and submit
+before the event deadline. Keep the pre-existing work and AI-use disclosures accurate.

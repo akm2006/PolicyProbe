@@ -40,7 +40,8 @@ chainValidation:
 - Routes policy findings to runtime repair while excluding infrastructure findings from repair
   scope.
 - Redacts primary and actor keys from reports, persisted prompts, and repair output.
-- Adds recipe authoring documentation and 82 tests across seven files.
+- Adds recipe authoring documentation and focused coverage for schema validation, evidence resolution,
+  actor provisioning, assertion execution, and reporting redaction.
 
 Existing recipes without actors or assertions retain their current behavior. The change adds no
 production dependency and contains no application-specific policy or ATS code.
@@ -49,13 +50,14 @@ production dependency and contains no application-specific policy or ATS code.
 
 - `npm run typecheck`: pass on Windows
 - direct `tsc -p tsconfig.json`: pass on Windows
-- feature-focused tests: 75 pass, 0 fail, 6 credential-gated live tests skipped
+- focused Harness tests: 72 pass, 0 fail, 6 credential-gated live tests skipped
+- [Ubuntu CI](https://github.com/akm2006/PolicyProbe/actions/runs/34677303566) passed the full Harness
+  test, typecheck, build, package smoke, browser tests, and ATS fixture build/audit
 - recorded ATS testnet fixture: 6 policy assertions pass; transaction evidence is linked from the
   companion PolicyProbe repository
 
-The full upstream suite contains POSIX-only commands and process assumptions, so the current
-Windows run is 257 pass, 14 fail, 6 skipped. The existing `npm test` command and the full suite
-must pass in the upstream Ubuntu workflow before merge.
+The full upstream suite contains POSIX-only commands and process assumptions, so the Windows run
+is not authoritative for those cases. The full suite passed in the linked Ubuntu CI run.
 
 ## Review order
 
