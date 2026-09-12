@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: manovHacksaw/hedera-harness
+          repository: akm2006/hedera-harness
           ref: feat/deterministic-onchain-postconditions
       - uses: actions/setup-node@v4
         with:
@@ -48,7 +48,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: manovHacksaw/hedera-harness
+          repository: akm2006/hedera-harness
           ref: feat/deterministic-onchain-postconditions
       - uses: actions/setup-node@v4
         with:

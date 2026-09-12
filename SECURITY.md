@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please report vulnerabilities privately to the repository owner through the contact options on
-the [manovHacksaw GitHub profile](https://github.com/manovHacksaw). Do not open a public issue
+the [akm2006 GitHub profile](https://github.com/akm2006). Do not open a public issue
 for credential exposure or an exploitable security flaw.
 
 Include the affected version or commit, reproduction steps, impact, and any suggested fix.
