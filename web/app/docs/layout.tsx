@@ -1,17 +1,11 @@
 import React from "react";
 import { DocSidebar } from "@/components/docs/DocSidebar";
 
-export default function DocsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DocsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-7xl flex-col lg:flex-row">
+    <div className="max-w-[1400px] mx-auto px-6 lg:px-12 pt-32 lg:pt-40 pb-24 flex flex-col lg:flex-row gap-12 lg:gap-20">
       <DocSidebar />
-      <div className="flex-1 px-4 py-10 sm:px-8 lg:px-12 max-w-4xl overflow-hidden">
-        {children}
-      </div>
+      <div className="flex-1 min-w-0 max-w-3xl">{children}</div>
     </div>
   );
 }

@@ -1,106 +1,92 @@
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Rocket, Layers, Code, BarChart, FileText, GitPullRequest, Search } from "lucide-react";
+import { Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DocGroup {
   title: string;
-  items: {
-    label: string;
-    href: string;
-    icon: React.ComponentType<{ className?: string }>;
-    badge?: string;
-  }[];
+  items: { label: string; href: string; badge?: string }[];
 }
 
-export const DocSidebar: React.FC = () => {
+const docGroups: DocGroup[] = [
+  {
+    title: "Getting started",
+    items: [
+      { label: "Overview", href: "/docs" },
+      { label: "Quickstart", href: "/docs/quickstart" },
+    ],
+  },
+  {
+    title: "Engine",
+    items: [
+      { label: "Architecture", href: "/docs/architecture" },
+      { label: "Recipe schema", href: "/docs/recipe-spec" },
+    ],
+  },
+  {
+    title: "Verification",
+    items: [
+      { label: "Benchmark", href: "/docs/benchmark", badge: "1.3:1" },
+      { label: "Verification ledger", href: "/proof" },
+      { label: "Mirror Node evidence", href: "/evidence" },
+    ],
+  },
+  {
+    title: "Governance",
+    items: [
+      { label: "Decision records", href: "/docs/decisions", badge: "10" },
+      { label: "Related work", href: "/docs/related-work", badge: "22 PRs" },
+    ],
+  },
+];
+
+export function DocSidebar() {
   const pathname = usePathname();
   const [search, setSearch] = useState("");
 
-  const docGroups: DocGroup[] = [
-    {
-      title: "Getting Started",
-      items: [
-        { label: "Overview & Problem", href: "/docs", icon: BookOpen },
-        { label: "Quickstart Setup", href: "/docs/quickstart", icon: Rocket },
-      ],
-    },
-    {
-      title: "Engine Architecture",
-      items: [
-        { label: "Harness 4-Stage Pipeline", href: "/docs/architecture", icon: Layers },
-        { label: "Recipe Schema (YAML)", href: "/docs/recipe-spec", icon: Code },
-      ],
-    },
-    {
-      title: "Verification & Metrics",
-      items: [
-        { label: "Quantitative Benchmark", href: "/docs/benchmark", icon: BarChart, badge: "1.3:1 Ratio" },
-        { label: "Verification Ledger", href: "/proof", icon: FileText },
-        { label: "Mirror Node Evidence", href: "/evidence", icon: Layers },
-      ],
-    },
-    {
-      title: "Governance & Ecosystem",
-      items: [
-        { label: "ADR Log (10 Decisions)", href: "/docs/decisions", icon: FileText },
-        { label: "Upstream PR Landscape", href: "/docs/related-work", icon: GitPullRequest, badge: "22 PRs" },
-      ],
-    },
-  ];
-
-  const filteredGroups = docGroups.map((group) => ({
-    ...group,
-    items: group.items.filter((item) =>
-      item.label.toLowerCase().includes(search.toLowerCase())
-    ),
-  })).filter((group) => group.items.length > 0);
+  const filteredGroups = docGroups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => item.label.toLowerCase().includes(search.toLowerCase())),
+    }))
+    .filter((group) => group.items.length > 0);
 
   return (
-    <aside className="w-full lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-white/[0.08] bg-[#050608]/70 backdrop-blur-md p-4 lg:p-6 font-mono">
-      {/* Search Input */}
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#6e7592]" />
+    <aside className="w-full lg:w-56 shrink-0 lg:sticky lg:top-28 lg:self-start">
+      <div className="relative mb-8">
+        <Search className="absolute left-0 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <input
           type="text"
-          placeholder="Filter docs..."
+          placeholder="Filter docs"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-[6px] border border-white/[0.08] bg-white/[0.03] py-1.5 pl-8 pr-3 text-xs text-white placeholder-[#6e7592] focus:border-[#8259ef] focus:outline-none transition"
+          className="w-full bg-transparent border-b border-foreground/10 py-2 pl-6 text-sm placeholder:text-muted-foreground focus:border-foreground focus:outline-none transition-colors"
         />
       </div>
 
-      {/* Nav groups */}
-      <div className="space-y-6">
-        {filteredGroups.map((g, idx) => (
-          <div key={idx}>
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-[#6e7592] mb-2 px-2">
-              {g.title}
-            </div>
-            <ul className="space-y-1">
+      <div className="space-y-8">
+        {filteredGroups.map((g) => (
+          <div key={g.title}>
+            <div className="font-mono text-xs text-muted-foreground mb-3">{g.title}</div>
+            <ul className="space-y-1 border-l border-foreground/10">
               {g.items.map((item) => {
                 const isActive = pathname === item.href;
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className={`flex items-center justify-between rounded-[6px] px-2.5 py-1.5 text-xs transition ${
+                      className={cn(
+                        "-ml-px flex items-center justify-between gap-2 border-l pl-4 py-1.5 text-sm transition-colors",
                         isActive
-                          ? "bg-[#8259ef]/15 font-semibold text-white border border-[#8259ef]/30"
-                          : "text-[#9aa1be] hover:bg-white/[0.03] hover:text-white"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <item.icon className={`h-3.5 w-3.5 ${isActive ? "text-[#8259ef]" : "text-[#6e7592]"}`} />
-                        <span>{item.label}</span>
-                      </div>
-                      {item.badge && (
-                        <span className="rounded bg-white/[0.06] border border-white/[0.06] px-1.5 py-0.5 text-[9px] text-[#c4c9dd]">
-                          {item.badge}
-                        </span>
+                          ? "border-foreground text-foreground"
+                          : "border-transparent text-muted-foreground hover:text-foreground"
                       )}
+                    >
+                      <span>{item.label}</span>
+                      {item.badge && <span className="font-mono text-[10px] text-muted-foreground">{item.badge}</span>}
                     </Link>
                   </li>
                 );
@@ -108,7 +94,8 @@ export const DocSidebar: React.FC = () => {
             </ul>
           </div>
         ))}
+        {filteredGroups.length === 0 && <p className="text-sm text-muted-foreground">No matching pages.</p>}
       </div>
     </aside>
   );
-};
+}

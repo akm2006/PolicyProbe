@@ -1,94 +1,174 @@
 "use client";
 
-import React from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Menu, X } from "lucide-react";
 import { PolicyProbeLogo } from "./PolicyProbeLogo";
-import { HederaIcon, GitHubIcon } from "./icons/EcosystemIcons";
-import { GitPullRequest } from "lucide-react";
+import { HARNESS_PR_URL, REPO_URL } from "@/lib/data";
+import { buttonOutline, buttonPrimary, cn } from "@/lib/utils";
 
-export const Navbar: React.FC = () => {
+const navItems = [
+  { label: "Overview", href: "/" },
+  { label: "Sandbox", href: "/#console" },
+  { label: "Suite", href: "/#matrix" },
+  { label: "Docs", href: "/docs" },
+  { label: "Verification", href: "/proof" },
+  { label: "Evidence", href: "/evidence" },
+];
+
+export function Navbar() {
   const pathname = usePathname();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const navItems = [
-    { label: "Overview", href: "/" },
-    { label: "Sandbox", href: "/#console" },
-    { label: "Suite", href: "/#matrix" },
-    { label: "Docs", href: "/docs" },
-    { label: "Verification", href: "/proof" },
-    { label: "Evidence", href: "/evidence" },
-  ];
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : href.startsWith("/#") ? false : pathname.startsWith(href);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#050608]/90 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Brand & Hedera Testnet Network Pill */}
-        <div className="flex items-center gap-3 shrink-0">
-          <Link href="/" className="flex items-center gap-2.5 transition hover:opacity-90">
-            <PolicyProbeLogo size={24} interactive={true} />
-            <span className="font-semibold tracking-tight text-white font-mono text-sm">PolicyProbe</span>
+    <header
+      className={cn(
+        "fixed z-50 transition-all duration-500",
+        isScrolled ? "top-4 left-4 right-4" : "top-0 left-0 right-0"
+      )}
+    >
+      <nav
+        className={cn(
+          "relative z-50 mx-auto transition-all duration-500",
+          isScrolled || isMobileMenuOpen
+            ? "bg-background/80 backdrop-blur-xl border border-foreground/10 rounded-2xl shadow-lg max-w-[1200px]"
+            : "bg-transparent max-w-[1400px]"
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center justify-between transition-all duration-500 px-6 lg:px-8",
+            isScrolled ? "h-14" : "h-20"
+          )}
+        >
+          <Link href="/" className="flex items-center gap-2.5" onClick={() => setIsMobileMenuOpen(false)}>
+            <PolicyProbeLogo size={isScrolled ? 16 : 20} interactive className="text-foreground" />
+            <span
+              className={cn(
+                "font-display tracking-tight transition-all duration-500",
+                isScrolled ? "text-xl" : "text-2xl"
+              )}
+            >
+              PolicyProbe
+            </span>
           </Link>
 
-          {/* Official Hedera Badge: Authentic White Mark + Status Beacon */}
-          <div className="hidden sm:flex items-center gap-2 rounded-full border border-white/[0.1] bg-white/[0.04] px-2.5 py-1 text-xs font-mono text-[#c4c9dd] whitespace-nowrap">
-            <HederaIcon className="h-4 w-4 text-white shrink-0" />
-            <span className="text-white font-medium">Hedera Testnet</span>
-            <span className="text-[#6e7592]">·</span>
-            <span className="text-[#8259ef]">296</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-[#10b981] animate-pulse shrink-0" />
-          </div>
-        </div>
-
-        {/* Center Nav Links */}
-        <nav className="hidden md:flex items-center gap-5 text-[13px] font-medium font-mono shrink-0">
-          {navItems.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : item.href.startsWith("/#")
-                ? false
-                : pathname.startsWith(item.href);
-
-            return (
+          <div className="hidden lg:flex items-center gap-10">
+            {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`transition-colors whitespace-nowrap ${
-                  isActive
-                    ? "text-white font-semibold"
-                    : "text-[#9aa1be] hover:text-white"
-                }`}
+                className={cn(
+                  "text-sm transition-colors duration-300 relative group",
+                  isActive(item.href) ? "text-foreground" : "text-foreground/60 hover:text-foreground"
+                )}
+              >
+                {item.label}
+                <span
+                  className={cn(
+                    "absolute -bottom-1 left-0 h-px bg-foreground transition-all duration-300",
+                    isActive(item.href) ? "w-full" : "w-0 group-hover:w-full"
+                  )}
+                />
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden lg:flex items-center gap-5">
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                "text-foreground/70 hover:text-foreground transition-all duration-500",
+                isScrolled ? "text-xs" : "text-sm"
+              )}
+            >
+              GitHub
+            </a>
+            <a
+              href={HARNESS_PR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonPrimary, "transition-all duration-500", isScrolled ? "h-8 px-4 text-xs" : "h-9 px-6 text-sm")}
+            >
+              Harness PR
+            </a>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden p-2"
+            aria-label="Toggle menu"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+      </nav>
+
+      <div
+        className={cn(
+          "lg:hidden fixed inset-0 bg-background z-40 transition-all duration-500",
+          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+      >
+        <div className="flex flex-col h-full px-8 pt-28 pb-8">
+          <div className="flex-1 flex flex-col justify-center gap-6">
+            {navItems.map((item, i) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={cn(
+                  "text-5xl font-display text-foreground hover:text-muted-foreground transition-all duration-500",
+                  isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+                )}
+                style={{ transitionDelay: isMobileMenuOpen ? `${i * 60}ms` : "0ms" }}
               >
                 {item.label}
               </Link>
-            );
-          })}
-        </nav>
+            ))}
+          </div>
 
-        {/* Right Action CTAs */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          <a
-            href="https://github.com/hedera-dev/hedera-harness/compare/dev...manovHacksaw:hedera-harness:policyprobe/deterministic-onchain-postconditions"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-[6px] border border-[#8259ef]/30 bg-[#8259ef]/10 px-2.5 py-1 text-xs font-mono text-[#c4c9dd] transition hover:border-[#8259ef] hover:text-white hover:bg-[#8259ef]/20 whitespace-nowrap"
+          <div
+            className={cn(
+              "flex gap-4 pt-8 border-t border-foreground/10 transition-all duration-500",
+              isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
+            )}
+            style={{ transitionDelay: isMobileMenuOpen ? "300ms" : "0ms" }}
           >
-            <GitPullRequest className="h-3.5 w-3.5 text-[#8259ef] shrink-0" />
-            <span className="hidden sm:inline">Harness Upstream PR</span>
-            <span className="sm:hidden">PR</span>
-          </a>
-
-          <a
-            href="https://github.com/manovHacksaw/PolicyProbe"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-[6px] border border-white/[0.12] bg-white/[0.04] px-2.5 py-1 text-xs font-mono text-white transition hover:bg-white/[0.08] whitespace-nowrap"
-          >
-            <GitHubIcon className="h-3.5 w-3.5 shrink-0" />
-            <span className="hidden sm:inline">GitHub</span>
-          </a>
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonOutline, "flex-1 h-14 text-base")}
+            >
+              GitHub
+            </a>
+            <a
+              href={HARNESS_PR_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(buttonPrimary, "flex-1 h-14 text-base")}
+            >
+              Harness PR
+            </a>
+          </div>
         </div>
       </div>
     </header>
   );
-};
+}

@@ -69,10 +69,10 @@ export const PolicyProbeLogo: React.FC<PolicyProbeLogoProps> = ({
       whileHover={interactive && !shouldReduceMotion ? { scale: 1.04 } : undefined}
       transition={{ type: "spring", stiffness: 350, damping: 25 }}
     >
-      {/* Path 1: Expected State (White Form) */}
+      {/* Path 1: Expected State (inherits text color so it reads on light and dark grounds) */}
       <motion.path
         d="M0 180L351 297.5L207.5 362L97 323.5V638.5L245 685V597.5L374.5 646.5V853L0 730.5V180Z"
-        fill="#FFFFFF"
+        fill="currentColor"
         variants={shouldReduceMotion ? {} : expectedVariants}
         animate={state}
         transition={{ type: "spring", stiffness: 260, damping: 22 }}

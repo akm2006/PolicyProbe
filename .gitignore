@@ -42,3 +42,6 @@ graphify-out/
 # Foundry
 broadcast/
 cache_forge/
+
+# Imported UI template (reference only)
+optimus-the-ai-platform-to-build-and-ship/

@@ -1,99 +1,120 @@
 import React from "react";
-import Link from "next/link";
-import { ArrowRight, ShieldAlert, CheckCircle2, Terminal } from "lucide-react";
+import { PageHeader } from "@/components/SectionHeader";
+import { Callout, CodeBlock, DocArticle, DocH2, DocNav } from "@/components/docs/DocPrimitives";
 
 export const metadata = {
   title: "Overview — PolicyProbe Documentation",
   description: "Why AI coding agents need deterministic onchain postconditions instead of LLM semantic grading.",
 };
 
+const pillars = [
+  {
+    title: "Declarative invariants",
+    body: (
+      <>
+        Written in <code>spec.yaml</code> recipes next to the actions (<code>mustRevert</code>, <code>mustSucceed</code>,{" "}
+        <code>balanceDelta</code>).
+      </>
+    ),
+  },
+  {
+    title: "Mirror Node evidence",
+    body: "Real transaction status and balance deltas, queried from Hedera REST APIs with exponential backoff.",
+  },
+  {
+    title: "Code-based evaluation",
+    body: (
+      <>
+        Strict TypeScript comparison in <code>0.00ms</code>. No non-deterministic prompt grading.
+      </>
+    ),
+  },
+  {
+    title: "Agent repair feedback",
+    body: (
+      <>
+        Mismatches emit structured findings into <code>promptBuilder.ts</code> so coding agents can self-heal.
+      </>
+    ),
+  },
+];
+
 export default function DocsOverviewPage() {
   return (
-    <article className="prose prose-invert max-w-none text-xs sm:text-sm leading-relaxed text-[#c7c7c7] font-sans">
-      <div className="border-b border-[rgba(255,255,255,0.08)] pb-6 mb-8">
-        <div className="text-[11px] font-mono text-[#734AF9] mb-1 uppercase tracking-wider">
-          Documentation · Introduction
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight font-mono">
-          PolicyProbe Overview
-        </h1>
-        <p className="text-xs sm:text-sm text-[#9B9B9B] mt-1 font-mono">
-          Deterministic onchain behavioral assertions for Hedera Harness.
-        </p>
-      </div>
+    <DocArticle>
+      <PageHeader
+        eyebrow="Documentation"
+        title="Overview"
+        description="Deterministic onchain behavioral assertions for Hedera Harness."
+      />
 
-      <h2 className="text-lg font-bold text-white font-mono mt-8 mb-3">1. Executive Summary</h2>
       <p>
-        PolicyProbe extends <strong>Hedera Harness</strong> with deterministic onchain postcondition assertions. Declared in test recipes, verified against real Mirror Node records, and evaluated in code—never by an LLM.
+        PolicyProbe extends <strong>Hedera Harness</strong> with deterministic onchain postcondition assertions: declared in
+        test recipes, verified against real Mirror Node records, and evaluated in code — never by an LLM.
       </p>
 
-      <h2 className="text-lg font-bold text-white font-mono mt-8 mb-3">2. The Ground-Truth Gap in Autonomous Agent Tooling</h2>
-      <p>
-        Hedera Harness originally evaluated agent task runs through a four-stage pipeline: <code>GENERATE → ASSERT → SMOKE → EVALUATE</code>. In the baseline implementation of <code>EVALUATE</code>, Harness passed raw terminal execution logs to an LLM evaluator prompt:
-      </p>
+      <DocH2>Why PolicyProbe</DocH2>
+      <p>A successful transaction does not prove correct behavior.</p>
+      <CodeBlock className="text-sm text-center">
+        CLI process exits 0 <span className="mx-3 text-fail">≠</span> policy invariant is enforced
+      </CodeBlock>
 
-      <div className="rounded-[8px] bg-[#050505] p-4 font-mono text-xs border border-[rgba(255,255,255,0.08)] my-4 text-[#9B9B9B] leading-relaxed">
-        <div className="text-[#6B6B6B]"># Original Harness EVALUATE prompt (src/core/evaluator.ts)</div>
-        <div className="text-[#EF4444] mt-1">
+      <p>
+        Harness evaluated agent runs through <code>GENERATE → ASSERT → SMOKE → EVALUATE</code>. In the baseline{" "}
+        <code>EVALUATE</code> stage, raw terminal logs were handed to an LLM:
+      </p>
+      <CodeBlock>
+        <div className="text-muted-foreground"># Original Harness EVALUATE prompt (src/core/evaluator.ts)</div>
+        <div className="mt-1">
           &quot;Review the following execution log and determine if the agent satisfied the recipe requirements...&quot;
         </div>
+      </CodeBlock>
+
+      <Callout tone="fail" title="The failure mode: exit code 0 ≠ correct policy">
+        An agent ships a contract with a broken transfer restriction. The EVM returns <code>SUCCESS (200)</code>, the CLI
+        exits <code>0</code>, and the LLM marks the task <strong>PASSED</strong> — silently shipping a compliance defect.
+      </Callout>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-foreground/10 border border-foreground/10 my-8 font-mono text-xs">
+        <div className="bg-background p-5 space-y-2">
+          <p className="!my-0 text-fail">Baseline · LLM evaluation</p>
+          <p className="!my-0 text-muted-foreground">// agent writes a defective transfer</p>
+          <p className="!my-0">await bond.transfer(unverified_bob, 100);</p>
+          <p className="!my-0 text-muted-foreground">// testnet result</p>
+          <p className="!my-0">exitCode: 0 (SUCCESS)</p>
+          <p className="!my-0 text-muted-foreground">// LLM reads stdout</p>
+          <p className="!my-0 font-sans italic">&ldquo;Recipe requirements satisfied.&rdquo;</p>
+          <p className="!mt-4 !mb-0 text-fail">Silent failure shipped.</p>
+        </div>
+        <div className="bg-background p-5 space-y-2">
+          <p className="!my-0 text-pass">With PolicyProbe · code assertion</p>
+          <p className="!my-0 text-muted-foreground">// recipe declares the invariant</p>
+          <p className="!my-0">expect: &#123; transactionOutcome: &quot;mustRevert&quot; &#125;</p>
+          <p className="!my-0 text-muted-foreground">// Mirror Node reports</p>
+          <p className="!my-0">observed: SUCCESS (200)</p>
+          <p className="!my-0 text-muted-foreground">// TypeScript compares in 0.00ms</p>
+          <p className="!my-0">FAIL: reject-unverified-transfer (PP-017)</p>
+          <p className="!mt-4 !mb-0 text-pass">Typed finding feeds agent repair.</p>
+        </div>
       </div>
 
-      <div className="rounded-[8px] border border-[#EF4444]/30 bg-[#EF4444]/10 p-4 my-6 text-xs text-[#EF4444] font-mono">
-        <div className="font-bold flex items-center gap-2 mb-1">
-          <ShieldAlert className="h-4 w-4" />
-          <span>The Fatal Failure Mode: exit code 0 ≠ correct policy</span>
-        </div>
-        <div className="font-sans text-xs text-[#c7c7c7] mt-1">
-          When an autonomous agent generates a smart contract with a defective transfer restriction (e.g. an unverified investor receiving a restricted bond), the EVM executes the transaction with status <code>SUCCESS (200)</code>. The CLI process exits with code <code>0</code>. The LLM reading the log marks the task as <strong>PASSED</strong>, silently shipping a critical compliance defect.
-        </div>
-      </div>
-
-      <h2 className="text-lg font-bold text-white font-mono mt-8 mb-3">3. How PolicyProbe Solves It</h2>
+      <DocH2>How it works</DocH2>
       <p>
-        PolicyProbe converts behavioral policy from natural language descriptions into <strong>executable postcondition invariants</strong>:
+        PolicyProbe turns behavioral policy from natural language into <strong>executable postcondition invariants</strong>:
       </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 my-4 font-mono text-xs">
-        <div className="rounded-[8px] bg-[#0B0B0B] border border-[rgba(255,255,255,0.06)] p-4">
-          <div className="text-[#734AF9] font-bold mb-1">1. Declarative Invariants</div>
-          <p className="text-[#9B9B9B] font-sans text-xs">
-            Authored in <code>spec.yaml</code> recipes alongside action definitions (<code>mustRevert</code>, <code>mustSucceed</code>, <code>balanceDelta</code>).
-          </p>
-        </div>
-
-        <div className="rounded-[8px] bg-[#0B0B0B] border border-[rgba(255,255,255,0.06)] p-4">
-          <div className="text-[#734AF9] font-bold mb-1">2. Mirror Node Evidence</div>
-          <p className="text-[#9B9B9B] font-sans text-xs">
-            Queried via Hedera REST APIs with exponential backoff, capturing real transaction status and balance deltas.
-          </p>
-        </div>
-
-        <div className="rounded-[8px] bg-[#0B0B0B] border border-[rgba(255,255,255,0.06)] p-4">
-          <div className="text-[#734AF9] font-bold mb-1">3. Code-Based Evaluation</div>
-          <p className="text-[#9B9B9B] font-sans text-xs">
-            Evaluated by strict TypeScript comparison functions in <code>0.00ms</code>. Zero non-deterministic prompt evaluations.
-          </p>
-        </div>
-
-        <div className="rounded-[8px] bg-[#0B0B0B] border border-[rgba(255,255,255,0.06)] p-4">
-          <div className="text-[#734AF9] font-bold mb-1">4. Agent Repair Feedback</div>
-          <p className="text-[#9B9B9B] font-sans text-xs">
-            Mismatches emit structured findings directly into <code>promptBuilder.ts</code>, allowing coding agents to self-heal.
-          </p>
-        </div>
+      <div className="border-t border-foreground/10">
+        {pillars.map((p, i) => (
+          <div key={p.title} className="grid grid-cols-[40px_1fr] gap-4 py-5 border-b border-foreground/10">
+            <span className="font-mono text-sm text-muted-foreground">0{i + 1}</span>
+            <div>
+              <h3 className="font-display text-xl text-foreground">{p.title}</h3>
+              <p className="!mt-1 !mb-0 text-muted-foreground">{p.body}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <div className="mt-12 pt-6 border-t border-[rgba(255,255,255,0.08)] flex justify-between items-center font-mono text-xs">
-        <span className="text-[#6B6B6B]">Next section</span>
-        <Link
-          href="/docs/quickstart"
-          className="inline-flex items-center gap-1 font-semibold text-[#734AF9] hover:underline"
-        >
-          <span>Quickstart Setup Guide</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-    </article>
+      <DocNav next={{ href: "/docs/quickstart", label: "Quickstart" }} />
+    </DocArticle>
   );
 }

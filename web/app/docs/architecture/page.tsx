@@ -1,31 +1,51 @@
 import React from "react";
-import Link from "next/link";
-import { ArrowRight, Layers, CheckCircle2, Cpu } from "lucide-react";
+import { PageHeader } from "@/components/SectionHeader";
+import { CodeBlock, DocArticle, DocH2, DocNav } from "@/components/docs/DocPrimitives";
 
 export const metadata = {
   title: "Pipeline Architecture — PolicyProbe Documentation",
   description: "Internal architecture of the Harness 4-stage lifecycle and PolicyProbe postcondition engine.",
 };
 
+const invariants = [
+  {
+    title: "Multi-actor ephemeral key isolation",
+    body: "Isolated keys for Alice (compliant), Bob (buyer), Carol (frozen), and an attacker — funded from the operator and swept back to zero after each run.",
+  },
+  {
+    title: "Code evaluation, not an LLM checklist",
+    body: "The baseline EVALUATE stage asked an LLM whether tests passed. PolicyProbe uses typed TypeScript comparators executed by Node.js in 0.00ms.",
+  },
+  {
+    title: "3-state Mirror Node reader",
+    body: "A strict found / not-found / infra-error trichotomy with exponential backoff separates genuine reverts from propagation latency.",
+  },
+  {
+    title: "Autonomous repair loop",
+    body: "Failed assertions produce a structured finding (category chain-assertion-failure) piped into promptBuilder.ts with the exact testnet diff.",
+  },
+  {
+    title: "ATS diamond facet integration",
+    body: "Validates AccessControlFacet, PauseFacet, FreezeFacet, and KYCFacet state on the Asset Tokenization Studio ERC-2535 diamond.",
+  },
+  {
+    title: "Zero upstream contamination",
+    body: "All 11 commits in the hedera-harness fork are generic primitives — no project branding, no downstream lock-in.",
+  },
+];
+
 export default function ArchitecturePage() {
   return (
-    <article className="prose prose-invert max-w-none text-xs sm:text-sm leading-relaxed text-[#c7c7c7] font-sans">
-      <div className="border-b border-[rgba(255,255,255,0.08)] pb-6 mb-8">
-        <div className="text-[11px] font-mono text-[#734AF9] mb-1 uppercase tracking-wider">
-          Documentation · Engine Internals
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight font-mono">
-          Harness Pipeline Architecture
-        </h1>
-        <p className="text-xs sm:text-sm text-[#9B9B9B] mt-1 font-mono">
-          End-to-end trace from recipe definition to autonomous agent repair.
-        </p>
-      </div>
+    <DocArticle>
+      <PageHeader
+        eyebrow="Engine"
+        title="Architecture"
+        description="End-to-end trace from recipe definition to autonomous agent repair."
+      />
 
-      <h2 className="text-lg font-bold text-white font-mono mt-8 mb-3">1. Architectural Flow</h2>
-      
-      <div className="rounded-[8px] bg-[#050505] p-5 font-mono text-xs border border-[rgba(255,255,255,0.08)] my-4 text-[#c7c7c7] overflow-x-auto leading-relaxed">
-{`+-----------------------------------------------------------------------+
+      <DocH2>1. Architectural flow</DocH2>
+      <CodeBlock>
+        <pre>{`+-----------------------------------------------------------------------+
 | 1. RECIPE PARSER (spec.yaml)                                          |
 |    Parses actors, preconditions, test actions, and postconditions.    |
 +-----------------------------------------------------------------------+
@@ -61,41 +81,46 @@ export default function ArchitecturePage() {
 | SUITE MARKED GREEN    |              | STRUCTURED FINDING EMITTED     |
 | Zero findings emitted |              | Piped into promptBuilder.ts    |
 +-----------------------+              | Coding agent repairs contract  |
-                                       +--------------------------------+`}
-      </div>
+                                       +--------------------------------+`}</pre>
+      </CodeBlock>
 
-      <h2 className="text-lg font-bold text-white font-mono mt-8 mb-3">2. The 3-State Mirror Node Trichotomy (ADR-0007)</h2>
+      <DocH2>2. The 3-state Mirror Node trichotomy</DocH2>
       <p>
-        Because Hedera consensus transactions propagate to Mirror Nodes within 1–3 seconds, querying too quickly yields HTTP <code>404</code>. PolicyProbe handles this with an exponential backoff reader:
+        Hedera transactions reach Mirror Nodes within 1–3 seconds, so querying too early returns HTTP <code>404</code>.
+        PolicyProbe handles this with an exponential backoff reader (ADR-0007):
+      </p>
+      <CodeBlock>
+        <div className="text-muted-foreground"># Mirror Node polling engine (src/chain/mirrorClient.ts)</div>
+        <div className="mt-1">const pollIntervals = [300, 600, 1200, 2400]; // ms</div>
+        <div>for (const delay of pollIntervals) &#123;</div>
+        <div className="pl-4">const receipt = await fetchTransaction(txId);</div>
+        <div className="pl-4 text-pass">if (receipt) return &#123; state: &quot;FOUND&quot;, receipt &#125;;</div>
+        <div className="pl-4">await sleep(delay);</div>
+        <div>&#125;</div>
+        <div className="text-fail">return &#123; state: &quot;INFRASTRUCTURE_ERROR&quot;, reason: &quot;Mirror node timeout&quot; &#125;;</div>
+      </CodeBlock>
+      <p className="text-muted-foreground">
+        Transient network latency is never misreported as an application failure — infrastructure failures must not pollute
+        test results.
       </p>
 
-      <div className="rounded-[8px] bg-[#050505] p-4 font-mono text-xs border border-[rgba(255,255,255,0.08)] my-4 text-[#c7c7c7] leading-relaxed">
-        <div className="text-[#6B6B6B]"># Mirror Node Polling Engine (src/chain/mirrorClient.ts)</div>
-        <div className="text-white mt-1">const pollIntervals = [300, 600, 1200, 2400]; // ms</div>
-        <div className="text-white">for (const delay of pollIntervals) &#123;</div>
-        <div className="text-[#c7c7c7] pl-4">const receipt = await fetchTransaction(txId);</div>
-        <div className="text-[#22C55E] pl-4">if (receipt) return &#123; state: &quot;FOUND&quot;, receipt &#125;;</div>
-        <div className="text-[#c7c7c7] pl-4">await sleep(delay);</div>
-        <div className="text-white">&#125;</div>
-        <div className="text-[#EF4444]">return &#123; state: &quot;INFRASTRUCTURE_ERROR&quot;, reason: &quot;Mirror node timeout&quot; &#125;;</div>
+      <DocH2>3. Design invariants</DocH2>
+      <div className="border-t border-foreground/10">
+        {invariants.map((item, i) => (
+          <div key={item.title} className="grid grid-cols-[40px_1fr] gap-4 py-5 border-b border-foreground/10">
+            <span className="font-mono text-sm text-muted-foreground">0{i + 1}</span>
+            <div>
+              <h3 className="font-display text-xl text-foreground">{item.title}</h3>
+              <p className="!mt-1 !mb-0 text-muted-foreground">{item.body}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      <p className="text-xs text-[#9B9B9B]">
-        This prevents transient network latency from being misreported as an application failure, honoring the core Harness philosophy that infrastructure failures must never pollute test results.
-      </p>
-
-      <div className="mt-12 pt-6 border-t border-[rgba(255,255,255,0.08)] flex justify-between items-center font-mono text-xs">
-        <Link href="/docs/quickstart" className="text-[#6B6B6B] hover:text-white">
-          ← Quickstart
-        </Link>
-        <Link
-          href="/docs/recipe-spec"
-          className="inline-flex items-center gap-1 font-semibold text-[#734AF9] hover:underline"
-        >
-          <span>YAML Recipe Specification</span>
-          <ArrowRight className="h-3.5 w-3.5" />
-        </Link>
-      </div>
-    </article>
+      <DocNav
+        prev={{ href: "/docs/quickstart", label: "Quickstart" }}
+        next={{ href: "/docs/recipe-spec", label: "Recipe schema" }}
+      />
+    </DocArticle>
   );
 }

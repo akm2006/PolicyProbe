@@ -1,204 +1,129 @@
 import React from "react";
 import Link from "next/link";
-import { CheckCircle2, ExternalLink, GitBranch, ShieldCheck, Database, Layers } from "lucide-react";
-import { HederaIcon, HashScanIcon } from "@/components/icons/EcosystemIcons";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
+import { PageHeader } from "@/components/SectionHeader";
+import { DIAMOND_ADDRESS, hashscanAddress, hashscanTx } from "@/lib/data";
 
 export const metadata = {
   title: "Verification Ledger — PolicyProbe",
   description: "Cryptographic receipts, upstream commits, and testnet consensus timestamps for PolicyProbe.",
 };
 
+function ExtLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 break-all underline-offset-4 hover:underline"
+    >
+      {children}
+      <ArrowUpRight className="w-3 h-3 shrink-0" />
+    </a>
+  );
+}
+
+function Row({ label, children, tone }: { label: string; children: React.ReactNode; tone?: "pass" }) {
+  return (
+    <div className="py-4 flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-8">
+      <dt className="text-muted-foreground text-sm shrink-0">{label}</dt>
+      <dd className={`font-mono text-xs sm:text-right break-all ${tone === "pass" ? "text-pass" : ""}`}>{children}</dd>
+    </div>
+  );
+}
+
+function LedgerSection({ number, title, children }: { number: string; title: string; children: React.ReactNode }) {
+  return (
+    <section className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-4 lg:gap-12 py-10 border-b border-foreground/10">
+      <div>
+        <span className="font-mono text-sm text-muted-foreground">{number}</span>
+        <h2 className="mt-2 text-3xl font-display tracking-tight">{title}</h2>
+      </div>
+      <div className="min-w-0">{children}</div>
+    </section>
+  );
+}
+
+const assertionTypes = [
+  { name: "mustSucceed", body: "Transaction executed with status SUCCESS (200)." },
+  { name: "mustRevert", body: "EVM reverted, e.g. CONTRACT_REVERT_EXECUTED with a custom error selector." },
+  { name: "balanceDelta", body: "Exact balance change across HBAR and HTS tokens." },
+  { name: "stateEquals", body: "Contract storage inspected via view call over EVM RPC." },
+];
+
 export default function ProofPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8 font-mono">
-      {/* Header */}
-      <div className="border-b border-white/[0.08] pb-8 mb-10">
-        <div className="text-xs text-[#8259ef] mb-2 uppercase tracking-wider font-semibold">
-          ONCHAIN AUDIT & REPOSITORY PROOFS
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-white font-mono">
-          VERIFICATION LEDGER
-        </h1>
-        <p className="mt-2 text-xs sm:text-sm text-[#9aa1be] font-mono">
-          Verifiable Hedera Testnet consensus receipts, pinned upstream commit hashes, and deterministic assertion records.
-        </p>
-      </div>
+    <div className="max-w-[1400px] mx-auto px-6 lg:px-12 pt-32 lg:pt-40 pb-24">
+      <PageHeader
+        eyebrow="Verification ledger"
+        title="Proof, not promises."
+        description="Testnet receipts, pinned upstream commits, and assertion records."
+        className="mb-0"
+      />
 
-      {/* Verification Ledger Table */}
-      <div className="space-y-8 text-xs">
-        {/* Section 1: Upstream Contribution */}
-        <div className="glass-panel rounded-[10px] p-6">
-          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <GitBranch className="h-4 w-4 text-[#8259ef]" />
-            <span>1. Upstream Harness Contribution</span>
-          </h2>
-          <div className="divide-y divide-white/[0.06]">
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Upstream Base Repository:</span>
-              <a
-                href="https://github.com/hedera-dev/hedera-harness"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white hover:text-[#8259ef] transition flex items-center gap-1"
-              >
-                <span>hedera-dev/hedera-harness:dev</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Pinned Base SHA:</span>
-              <span className="text-white font-mono">4bfa099951b147318ff245ce0d47346b9409890f</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Contribution Branch:</span>
-              <span className="text-[#8259ef] font-mono">policyprobe/deterministic-onchain-postconditions</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Commits Ahead:</span>
-              <span className="text-white">11 scoped commits (Zero proprietary branding)</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Full Harness Suite:</span>
-              <span className="text-[#10b981] font-bold flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>277 / 277 PASS (100% green, 0 regressions)</span>
-              </span>
-            </div>
-          </div>
-        </div>
+      <LedgerSection number="01" title="Upstream contribution">
+        <dl className="divide-y divide-foreground/10">
+          <Row label="Base repository">
+            <ExtLink href="https://github.com/hedera-dev/hedera-harness">hedera-dev/hedera-harness:dev</ExtLink>
+          </Row>
+          <Row label="Pinned base SHA">4bfa099951b147318ff245ce0d47346b9409890f</Row>
+          <Row label="Branch">policyprobe/deterministic-onchain-postconditions</Row>
+          <Row label="Commits ahead">11 scoped commits</Row>
+          <Row label="Harness suite" tone="pass">
+            277 / 277 pass · 0 regressions
+          </Row>
+        </dl>
+      </LedgerSection>
 
-        {/* Section 2: Hedera Testnet Execution */}
-        <div className="glass-panel rounded-[10px] p-6">
-          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Database className="h-4 w-4 text-[#8259ef]" />
-            <span>2. Live Hedera Testnet Environment</span>
-          </h2>
-          <div className="divide-y divide-white/[0.06]">
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Chain ID & Network:</span>
-              <span className="text-white flex items-center gap-1.5">
-                <HederaIcon className="h-4 w-4 text-white" />
-                <span>296 (Hedera Testnet)</span>
-              </span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Deployer / Operator Account:</span>
-              <a
-                href="https://hashscan.io/testnet/account/0.0.10464599"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white hover:text-[#8259ef] transition flex items-center gap-1"
-              >
-                <span>0.0.10464599 (0xb40a2e5fdfaec87bad82246d041886354f5faff4)</span>
-                <HashScanIcon className="h-3 w-3 text-[#8259ef]" />
-              </a>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">ATS Bond Factory:</span>
-              <span className="text-white">0.0.9213391</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Deployed Bond Diamond:</span>
-              <a
-                href="https://hashscan.io/testnet/address/0x29d9c62fC1E8d2420010Ce243c6345dF9eB0b53a"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#8259ef] hover:underline flex items-center gap-1"
-              >
-                <span>0x29d9c62fC1E8d2420010Ce243c6345dF9eB0b53a</span>
-                <HashScanIcon className="h-3 w-3 text-[#8259ef]" />
-              </a>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Deployed ISIN:</span>
-              <span className="text-white font-mono">USPLCYPROB86 (Valid ISO 6166 checksum)</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Deployment Transaction:</span>
-              <a
-                href="https://hashscan.io/testnet/transaction/0xc2b8cc004f862abeec6dd455df92ff5feaa602cdbdf53e2d8c4f3bc0711d2d94"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white hover:text-[#8259ef] transition flex items-center gap-1"
-              >
-                <span className="truncate max-w-xs sm:max-w-md">0xc2b8cc004f862abeec6dd455df92ff5feaa602cdbdf53e2d8c4f3bc0711d2d94</span>
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          </div>
-        </div>
+      <LedgerSection number="02" title="Hedera Testnet">
+        <dl className="divide-y divide-foreground/10">
+          <Row label="Network">296 (Hedera Testnet)</Row>
+          <Row label="Operator account">
+            <ExtLink href="https://hashscan.io/testnet/account/0.0.10464599">
+              0.0.10464599 (0xb40a2e5fdfaec87bad82246d041886354f5faff4)
+            </ExtLink>
+          </Row>
+          <Row label="ATS bond factory">0.0.9213391</Row>
+          <Row label="Bond diamond">
+            <ExtLink href={hashscanAddress(DIAMOND_ADDRESS)}>{DIAMOND_ADDRESS}</ExtLink>
+          </Row>
+          <Row label="ISIN">USPLCYPROB86 (valid ISO 6166)</Row>
+          <Row label="Deployment tx">
+            <ExtLink href={hashscanTx("0xc2b8cc004f862abeec6dd455df92ff5feaa602cdbdf53e2d8c4f3bc0711d2d94")}>
+              0xc2b8cc004f862abeec6dd455df92ff5feaa602cdbdf53e2d8c4f3bc0711d2d94
+            </ExtLink>
+          </Row>
+        </dl>
+      </LedgerSection>
 
-        {/* Section 3: Invariant Assertions Supported */}
-        <div className="glass-panel rounded-[10px] p-6">
-          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-[#8259ef]" />
-            <span>3. Supported Deterministic Postconditions</span>
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-            <div className="p-3.5 rounded-[8px] bg-white/[0.02] border border-white/[0.06]">
-              <div className="font-bold text-white mb-1">mustSucceed</div>
-              <div className="text-[#9aa1be] font-sans">
-                Asserts that the transaction executed with status SUCCESS (status code 200).
-              </div>
+      <LedgerSection number="03" title="Assertion types">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-foreground/10 border border-foreground/10">
+          {assertionTypes.map((a) => (
+            <div key={a.name} className="bg-background p-6">
+              <div className="font-mono text-sm">{a.name}</div>
+              <p className="mt-2 text-sm text-muted-foreground">{a.body}</p>
             </div>
-            <div className="p-3.5 rounded-[8px] bg-white/[0.02] border border-white/[0.06]">
-              <div className="font-bold text-white mb-1">mustRevert</div>
-              <div className="text-[#9aa1be] font-sans">
-                Asserts that the EVM reverted execution (e.g. CONTRACT_REVERT_EXECUTED with custom error selector).
-              </div>
-            </div>
-            <div className="p-3.5 rounded-[8px] bg-white/[0.02] border border-white/[0.06]">
-              <div className="font-bold text-white mb-1">balanceDelta</div>
-              <div className="text-[#9aa1be] font-sans">
-                Verifies exact numeric balance changes before and after execution across HBAR and HTS tokens.
-              </div>
-            </div>
-            <div className="p-3.5 rounded-[8px] bg-white/[0.02] border border-white/[0.06]">
-              <div className="font-bold text-white mb-1">stateEquals</div>
-              <div className="text-[#9aa1be] font-sans">
-                Direct view call inspection of smart contract storage variables via EVM RPC.
-              </div>
-            </div>
-          </div>
+          ))}
         </div>
+      </LedgerSection>
 
-        {/* Section 4: Quantitative Verification */}
-        <div className="glass-panel rounded-[10px] p-6">
-          <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Layers className="h-4 w-4 text-[#8259ef]" />
-            <span>4. Quantitative Verification Summary</span>
-          </h2>
-          <div className="divide-y divide-white/[0.06]">
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Live Onchain Assertion Evidence Tests:</span>
-              <span className="text-[#10b981] font-bold">36 / 36 PASS</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Ephemeral Actor Key Provisioning Tests:</span>
-              <span className="text-[#10b981] font-bold">2 / 2 PASS</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">ATS Bond Policy Conformance Suite:</span>
-              <span className="text-[#10b981] font-bold">6 / 6 PASS</span>
-            </div>
-            <div className="py-2.5 flex justify-between items-center">
-              <span className="text-[#6e7592]">Before/After Demonstration:</span>
-              <span className="text-[#10b981] font-bold">
-                Caught policy defect on 0xeff7... then fixed on 0x29d9...
-              </span>
-            </div>
-          </div>
-        </div>
+      <LedgerSection number="04" title="Results">
+        <dl className="divide-y divide-foreground/10">
+          <Row label="Live onchain assertion tests" tone="pass">36 / 36 pass</Row>
+          <Row label="Ephemeral actor provisioning" tone="pass">2 / 2 pass</Row>
+          <Row label="ATS bond policy suite" tone="pass">6 / 6 pass</Row>
+          <Row label="Before / after">Defect caught on 0xeff7…, fixed on 0x29d9…</Row>
+        </dl>
+      </LedgerSection>
 
-        {/* Navigation back */}
-        <div className="pt-4 flex items-center justify-between text-xs">
-          <Link href="/" className="text-[#8259ef] hover:underline">
-            ← Back to Overview
-          </Link>
-          <Link href="/evidence" className="text-white hover:underline">
-            Inspect Full Mirror Node JSON Evidence →
-          </Link>
-        </div>
+      <div className="pt-10 flex items-center justify-between gap-4 text-sm">
+        <Link href="/" className="text-muted-foreground hover:text-foreground transition-colors">
+          ← Overview
+        </Link>
+        <Link href="/evidence" className="inline-flex items-center gap-2 hover:underline underline-offset-4">
+          Mirror Node evidence
+          <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
     </div>
   );

@@ -70,7 +70,7 @@ export const HashScanIcon: React.FC<IconProps> = ({ className = "h-4 w-4", size 
     <circle cx="20.5" cy="20" r="20" fill="currentColor" />
     <path
       d="M28.6211 28.65H26.0812V23.2502H14.901V28.65H12.361V11.1401H14.901V16.41H26.0812V11.1401H28.6212L28.6211 28.65ZM15.021 21.23H26.201V18.4401H15.021V21.23Z"
-      fill="#050608"
+      fill="var(--background, #fff)"
     />
   </svg>
 );
