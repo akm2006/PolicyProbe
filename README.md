@@ -18,7 +18,7 @@
 <p>
   <a href="https://github.com/akm2006/PolicyProbe/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/akm2006/PolicyProbe/ci.yml?branch=main&style=flat-square&label=CI&labelColor=1c1917"></a>
   <a href="fixtures/ats-bond/EVIDENCE.md"><img alt="Testnet evidence: 6 of 6 policies passing" src="https://img.shields.io/badge/testnet-6%2F6%20policies%20passing-1f8a55?style=flat-square&labelColor=1c1917"></a>
-  <a href="https://github.com/hedera-dev/hedera-harness/pull/74"><img alt="Upstream: hedera-harness PR #74" src="https://img.shields.io/badge/upstream-harness%20PR%20%2374-734AF9?style=flat-square&labelColor=1c1917"></a>
+  <a href="https://github.com/hedera-dev/hedera-harness/pull/74"><img alt="Upstream: hedera-harness PR #74" src="https://img.shields.io/badge/upstream-harness%20PR%20%2374-44403c?style=flat-square&labelColor=1c1917"></a>
   <img alt="Node.js 20 or newer" src="https://img.shields.io/badge/node-%E2%89%A5%2020-44403c?style=flat-square&labelColor=1c1917">
   <a href="LICENSE"><img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-44403c?style=flat-square&labelColor=1c1917"></a>
 </p>

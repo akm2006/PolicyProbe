@@ -1,38 +1,180 @@
 #!/usr/bin/env node
-// Renders the README artwork (banner, flow, comparison, stats, mark) in light and dark variants.
-// The SVGs are served through <picture> so GitHub picks the one matching the viewer's theme.
-// Usage: node .github/assets/build-readme-art.mjs
+// Renders the README artwork in the website's design language, in light and dark variants.
+// Light uses the marketing-site palette and dark uses the docs dark palette (web/app/globals.css).
+// Instrument Sans and JetBrains Mono are fetched from Google Fonts, subset to the glyphs each SVG
+// uses, and embedded so the artwork matches the site; system fonts remain the fallback.
+//
+// Usage, from the repository root:
+//   npm install --no-save subset-font
+//   node .github/assets/build-readme-art.mjs
 import { writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const OUT = dirname(fileURLToPath(import.meta.url));
-const BRAND = '#734AF9';
+// FONT_TOOLS_DIR lets subset-font resolve from an install outside the repository.
+const require = createRequire(
+  process.env.FONT_TOOLS_DIR ? join(process.env.FONT_TOOLS_DIR, 'index.js') : import.meta.url,
+);
+const subsetFont = require('subset-font');
 
-const THEMES = {
-  dark: {
-    bg: '#0c0a09', surface: '#151311', raised: '#1c1917',
-    border: '#292524', borderStrong: '#3b3632',
-    text: '#faf9f6', muted: '#a8a29e', faint: '#77706a',
-    accent: '#9277ff', dot: '#ffffff', dotOpacity: 0.07, glow: 0.32,
-    pass: '#4cc38a', fail: '#f26d57', warn: '#e3a73f',
-  },
-  light: {
-    bg: '#faf9f6', surface: '#ffffff', raised: '#f5f4f1',
-    border: '#e7e5e4', borderStrong: '#d6d3d1',
-    text: '#1c1917', muted: '#6b645c', faint: '#948d86',
-    accent: BRAND, dot: '#1c1917', dotOpacity: 0.08, glow: 0.14,
-    pass: '#1f8a55', fail: '#d92d20', warn: '#b7791f',
-  },
-};
+// ── Color: the site's oklch tokens, converted to hex for broad SVG support ──────────────────────
 
-const BASE_CSS = `
-  .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-  .mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
-  .serif { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; }
-  .flow { stroke-dasharray: 3 7; animation: flow 1.4s linear infinite; }
-  @keyframes flow { to { stroke-dashoffset: -20; } }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }`;
+function oklch(L, C, H) {
+  const h = (H * Math.PI) / 180;
+  const a = C * Math.cos(h);
+  const b = C * Math.sin(h);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const linear = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  return `#${linear
+    .map((c) => {
+      const v = c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+      return Math.round(Math.min(1, Math.max(0, v)) * 255).toString(16).padStart(2, '0');
+    })
+    .join('')}`;
+}
+
+function mix(from, to, amount) {
+  const parse = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const a = parse(from);
+  const b = parse(to);
+  return `#${a.map((v, i) => Math.round(v + (b[i] - v) * amount).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function siteTheme() {
+  const bg = oklch(0.985, 0.002, 90);
+  const fg = oklch(0.12, 0.01, 60);
+  return {
+    bg, fg,
+    card: oklch(1, 0, 0),
+    muted: oklch(0.45, 0.02, 60),
+    border: oklch(0.88, 0.01, 90),
+    pass: oklch(0.6, 0.13, 155),
+    fail: oklch(0.577, 0.245, 27.325),
+    warn: oklch(0.769, 0.188, 70.08),
+    logo: { ink: '#1c1917', observed: '#6b645c' },
+    // "How it works" is an inverted ink section on the site.
+    panel: { bg: fg, text: bg },
+  };
+}
+
+function docsDarkTheme() {
+  const bg = oklch(0.145, 0.003, 60);
+  const fg = oklch(0.96, 0.003, 90);
+  const card = oklch(0.175, 0.003, 60);
+  return {
+    bg, fg, card,
+    muted: oklch(0.7, 0.01, 60),
+    border: mix(bg, '#ffffff', 0.1),
+    pass: oklch(0.72, 0.14, 155),
+    fail: oklch(0.68, 0.2, 27),
+    warn: oklch(0.769, 0.188, 70.08),
+    logo: { ink: '#faf9f6', observed: '#a8a29e' },
+    panel: { bg: card, text: fg },
+  };
+}
+
+const THEMES = { light: siteTheme(), dark: docsDarkTheme() };
+
+// ── Fonts ────────────────────────────────────────────────────────────────────────────────────────
+
+const GOOGLE_FONTS_CSS =
+  'https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400..700&display=swap';
+const FONTS = { 'PP Sans': 'Instrument Sans', 'PP Mono': 'JetBrains Mono' };
+let fontFiles;
+
+async function loadFonts() {
+  // Google Fonts only serves woff2 to modern user agents.
+  const headers = {
+    'user-agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+  };
+  const css = await (await fetch(GOOGLE_FONTS_CSS, { headers })).text();
+  const latinBlocks = css
+    .split('/* latin */')
+    .slice(1)
+    .map((chunk) => chunk.slice(0, chunk.indexOf('}')));
+  const files = {};
+  for (const [alias, family] of Object.entries(FONTS)) {
+    const url = latinBlocks.find((block) => block.includes(`'${family}'`))?.match(/url\(([^)]+)\)/)?.[1];
+    if (!url) throw new Error(`No latin woff2 for ${family} in the Google Fonts response`);
+    files[alias] = Buffer.from(await (await fetch(url)).arrayBuffer());
+  }
+  return files;
+}
+
+async function fontFaces(text) {
+  fontFiles ??= await loadFonts();
+  const faces = await Promise.all(
+    Object.entries(fontFiles).map(async ([alias, file]) => {
+      const woff2 = await subsetFont(file, text, { targetFormat: 'woff2' });
+      return `@font-face { font-family: '${alias}'; font-weight: 400 700; src: url(data:font/woff2;base64,${woff2.toString('base64')}) format('woff2'); }`;
+    }),
+  );
+  return faces.join('\n  ');
+}
+
+// ── Shared building blocks ───────────────────────────────────────────────────────────────────────
+
+async function svg({ w, h, title, css = '', body, fonts = true }) {
+  const glyphs = `${title} ${body.replace(/<[^>]+>/g, '')}`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" role="img" aria-label="${title}">
+<title>${title}</title>
+<style>
+  ${fonts ? await fontFaces(glyphs) : ''}
+  .sans { font-family: 'PP Sans', 'Instrument Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; }
+  .mono { font-family: 'PP Mono', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .dash { stroke-dasharray: 3 6; animation: dash 1.2s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -18; } }
+  .pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+  @keyframes pulse { 50% { opacity: 0.5; } }${css}
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+${body}
+</svg>
+`;
+}
+
+const round = (n) => Math.round(n * 10) / 10;
+
+// Site surface: flat ground, faint 12×8 hairline grid (or 45° stripes on ink panels), 3% noise.
+function canvas({ id, w, h, bg, ink, frame, pattern = 'grid', extra = '' }) {
+  const rows = [...Array(7)].map((_, i) => `M0 ${round((h * (i + 1)) / 8)}H${w}`).join('');
+  const cols = [...Array(11)].map((_, i) => `M${round((w * (i + 1)) / 12)} 0V${h}`).join('');
+  const texture =
+    pattern === 'grid'
+      ? `<path d="${rows}${cols}" stroke="${ink}" stroke-opacity="0.05"/>`
+      : `<rect width="${w}" height="${h}" fill="url(#${id}-stripes)"/>`;
+  return `
+<defs>
+  <clipPath id="${id}-frame"><rect width="${w}" height="${h}" rx="6"/></clipPath>
+  <pattern id="${id}-stripes" width="41" height="41" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+    <rect x="40" width="1" height="41" fill="${ink}" fill-opacity="0.05"/>
+  </pattern>
+  <filter id="${id}-noise" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/>
+  </filter>
+</defs>
+<g clip-path="url(#${id}-frame)">
+  <rect width="${w}" height="${h}" fill="${bg}"/>
+  ${texture}
+  <rect width="${w}" height="${h}" filter="url(#${id}-noise)" opacity="0.03"/>
+  ${extra}
+</g>
+<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="5.5" stroke="${frame}"/>`;
+}
+
+// The site's eyebrow: a 32px hairline, then a mono label.
+const eyebrow = ({ x, y, label, line, color }) => `
+<rect x="${x}" y="${y - 5}" width="32" height="1" fill="${line}"/>
+<text x="${x + 44}" y="${y}" class="mono" font-size="14" fill="${color}">${label}</text>`;
 
 const MARK_PATHS = {
   expected: 'M0 180L351 297.5L207.5 362L97 323.5V638.5L245 685V597.5L374.5 646.5V853L0 730.5V180Z',
@@ -42,39 +184,10 @@ const MARK_PATHS = {
 
 const mark = (t, x, y, height) => `
 <g transform="translate(${x} ${y}) scale(${+(height / 853).toFixed(5)})">
-  <path d="${MARK_PATHS.expected}" fill="${t.text}"/>
-  <path d="${MARK_PATHS.observed}" fill="${BRAND}"/>
-  <path d="${MARK_PATHS.assertion}" fill="${BRAND}"/>
+  <path d="${MARK_PATHS.expected}" fill="${t.logo.ink}"/>
+  <path d="${MARK_PATHS.observed}" fill="${t.logo.observed}"/>
+  <path d="${MARK_PATHS.assertion}" fill="${t.logo.ink}"/>
 </g>`;
-
-const svg = ({ w, h, title, css = '', body }) => `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" fill="none" role="img" aria-label="${title}">
-<title>${title}</title>
-<style>${BASE_CSS}${css}</style>
-${body}
-</svg>
-`;
-
-// Rounded canvas with a faded dot grid, shared by every wide graphic.
-const canvas = (t, w, h, id, extra = '') => `
-<defs>
-  <clipPath id="${id}-frame"><rect width="${w}" height="${h}" rx="20"/></clipPath>
-  <pattern id="${id}-dots" width="22" height="22" patternUnits="userSpaceOnUse">
-    <circle cx="1.5" cy="1.5" r="1.1" fill="${t.dot}" fill-opacity="${t.dotOpacity}"/>
-  </pattern>
-  <radialGradient id="${id}-fade" cx="50%" cy="50%" r="65%">
-    <stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
-  </radialGradient>
-  <mask id="${id}-mask"><rect width="${w}" height="${h}" fill="url(#${id}-fade)"/></mask>
-  <radialGradient id="${id}-glow">
-    <stop offset="0" stop-color="${BRAND}" stop-opacity="${t.glow}"/><stop offset="1" stop-color="${BRAND}" stop-opacity="0"/>
-  </radialGradient>
-</defs>
-<g clip-path="url(#${id}-frame)">
-  <rect width="${w}" height="${h}" fill="${t.bg}"/>
-  <rect width="${w}" height="${h}" fill="url(#${id}-dots)" mask="url(#${id}-mask)"/>
-  ${extra}
-</g>
-<rect x="0.5" y="0.5" width="${w - 1}" height="${h - 1}" rx="19.5" stroke="${t.border}"/>`;
 
 const check = (x, y, color) =>
   `<path d="M${x} ${y + 5}l3.5 3.5L${x + 11} ${y}" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -82,68 +195,96 @@ const cross = (x, y, color) =>
   `<path d="M${x} ${y}l9 9M${x + 9} ${y}l-9 9" stroke="${color}" stroke-width="2" stroke-linecap="round"/>`;
 
 const pill = ({ x, y, w, color, label, icon }) => `
-<rect x="${x}" y="${y}" width="${w}" height="30" rx="15" fill="${color}" fill-opacity="0.12" stroke="${color}" stroke-opacity="0.45"/>
-${icon === 'check' ? check(x + 14, y + 11, color) : cross(x + 15, y + 10.5, color)}
-<text x="${x + 34}" y="${y + 20}" class="mono" font-size="13" font-weight="700" letter-spacing="1" fill="${color}">${label}</text>`;
+<rect x="${x}" y="${y}" width="${w}" height="32" rx="16" fill="${color}" fill-opacity="0.1" stroke="${color}" stroke-opacity="0.4"/>
+${icon === 'check' ? check(x + 15, y + 12, color) : cross(x + 16, y + 11.5, color)}
+<text x="${x + 36}" y="${y + 21}" class="mono" font-size="13" font-weight="600" letter-spacing="0.8" fill="${color}">${label}</text>`;
 
-function banner(t) {
-  const W = 1280, H = 440;
-  const cx = 772, cy = 100, cw = 420, ch = 262;
-  const layer = (d, opacity) =>
-    `<rect x="${cx + d}" y="${cy - d}" width="${cw}" height="${ch}" rx="14" fill="${t.surface}" stroke="${t.borderStrong}" opacity="${opacity}"/>`;
-  const row = (y, label, value) => `
-  <text x="${cx + 28}" y="${y}" class="mono" font-size="13" fill="${t.faint}">${label}</text>
-  <text x="${cx + 128}" y="${y}" class="mono" font-size="14" fill="${t.text}">${value}</text>`;
-  const extra = `
-  <ellipse cx="190" cy="230" rx="360" ry="300" fill="url(#bn-glow)" class="breathe"/>
-  <ellipse cx="1000" cy="230" rx="420" ry="260" fill="url(#bn-glow)" opacity="0.5"/>
-  <polygon points="1010,-60 1340,50 1340,520 1010,410" stroke="${t.border}" stroke-width="1.5"/>`;
+// A frozen frame of the hero's AnimatedSphere (components/landing/AnimatedSphere.tsx).
+function glyphSphere(cx, cy, radius, time = 2.4) {
+  const chars = '░▒▓█▀▄▌▐│─┤├┴┬╭╮╰╯';
+  const points = [];
+  for (let phi = 0; phi < Math.PI * 2; phi += 0.15) {
+    for (let theta = 0; theta < Math.PI; theta += 0.15) {
+      const x = Math.sin(theta) * Math.cos(phi + time * 0.5);
+      const y = Math.sin(theta) * Math.sin(phi + time * 0.5);
+      const z = Math.cos(theta);
+      const rotY = time * 0.3;
+      const nx = x * Math.cos(rotY) - z * Math.sin(rotY);
+      const nz = x * Math.sin(rotY) + z * Math.cos(rotY);
+      const rotX = time * 0.2;
+      const ny = y * Math.cos(rotX) - nz * Math.sin(rotX);
+      const fz = y * Math.sin(rotX) + nz * Math.cos(rotX);
+      points.push({ x: cx + nx * radius, y: cy + ny * radius, z: fz, char: chars[Math.floor(((fz + 1) / 2) * (chars.length - 1))] });
+    }
+  }
+  return points
+    .sort((a, b) => a.z - b.z)
+    .map((p) => `<text x="${round(p.x)}" y="${round(p.y)}" fill-opacity="${(0.2 + (p.z + 1) * 0.4).toFixed(2)}">${p.char}</text>`)
+    .join('');
+}
+
+// ── Artwork ──────────────────────────────────────────────────────────────────────────────────────
+
+async function banner(t) {
+  const W = 1280, H = 510;
+  const sx = 1010, sy = 250;
+  // "verified" leads so a static render (or reduced motion) shows the final word. Widths are the
+  // advances measured in Chrome for the embedded Instrument Sans at 116px, so each underline bar
+  // spans its word the way the hero's does.
+  const words = [['verified', 375], ['expected', 477], ['executed', 470]];
   const css = `
-  .breathe { animation: breathe 7s ease-in-out infinite; }
-  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
-  .scan { animation: scan 5s ease-in-out infinite; opacity: 0; }
-  @keyframes scan { 0% { transform: translateY(0); opacity: 0; } 20%, 80% { opacity: 1; } 100% { transform: translateY(150px); opacity: 0; } }
-  .pulse { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-out infinite; }
-  @keyframes pulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(3.4); opacity: 0; } }`;
-  const body = `${canvas(t, W, H, 'bn', extra)}
-<defs>
-  <clipPath id="bn-card"><rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="14"/></clipPath>
-  <linearGradient id="bn-scan" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="${BRAND}" stop-opacity="0"/>
-    <stop offset="0.5" stop-color="${BRAND}" stop-opacity="0.12"/>
-    <stop offset="1" stop-color="${BRAND}" stop-opacity="0"/>
-  </linearGradient>
-</defs>
-${mark(t, 88, 135, 170)}
-<text x="262" y="214" class="sans" font-size="74" font-weight="650" letter-spacing="-2.4" fill="${t.text}">PolicyProbe</text>
-<text x="265" y="264" class="serif" font-size="31" font-style="italic" fill="${t.muted}">Expected. Executed. <tspan fill="${t.accent}">Verified.</tspan></text>
-<rect x="266" y="296" width="36" height="2" rx="1" fill="${BRAND}"/>
-<text x="266" y="334" class="mono" font-size="13.5" letter-spacing="2.4" fill="${t.muted}">DETERMINISTIC ON-CHAIN ASSERTIONS</text>
-<text x="266" y="358" class="mono" font-size="13.5" letter-spacing="2.4" fill="${t.faint}">FOR HEDERA HARNESS</text>
-
-${layer(28, 0.35)}
-${layer(14, 0.7)}
-<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="14" fill="${t.surface}" stroke="${t.borderStrong}"/>
-<g clip-path="url(#bn-card)"><rect class="scan" x="${cx}" y="${cy + 44}" width="${cw}" height="64" fill="url(#bn-scan)"/></g>
-<text x="${cx + 28}" y="${cy + 28}" class="mono" font-size="12" letter-spacing="1.2" fill="${t.faint}">chainValidation.assertions</text>
-<rect x="${cx + cw - 100}" y="${cy + 12}" width="74" height="22" rx="11" fill="${t.raised}" stroke="${t.border}"/>
-<circle cx="${cx + cw - 86}" cy="${cy + 23}" r="3" fill="${t.pass}"/>
-<text x="${cx + cw - 77}" y="${cy + 27}" class="mono" font-size="11" fill="${t.muted}">testnet</text>
-<line x1="${cx}" y1="${cy + 44}" x2="${cx + cw}" y2="${cy + 44}" stroke="${t.border}"/>
-<circle cx="${cx + 32}" cy="${cy + 76}" r="4" fill="${t.accent}" class="pulse"/>
-<circle cx="${cx + 32}" cy="${cy + 76}" r="4" fill="${t.accent}"/>
-<text x="${cx + 46}" y="${cy + 81}" class="mono" font-size="16" font-weight="600" fill="${t.text}">reject-unverified-transfer</text>
-${row(cy + 118, 'actor', 'attacker')}
-${row(cy + 146, 'expect', 'mustRevert')}
-${row(cy + 174, 'observed', 'CONTRACT_REVERT_EXECUTED')}
-<line x1="${cx}" y1="${cy + 198}" x2="${cx + cw}" y2="${cy + 198}" stroke="${t.border}"/>
-${pill({ x: cx + 28, y: cy + 214, w: 84, color: t.pass, label: 'PASS', icon: 'check' })}
-<text x="${cx + 128}" y="${cy + 234}" class="sans" font-size="13.5" fill="${t.muted}">Verdict from Mirror Node evidence</text>`;
+  .spin { transform-origin: ${sx}px ${sy}px; animation: spin 160s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .word { animation: 9s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
+  .word-1, .word-2 { opacity: 0; }
+  .word-0 { animation-name: word0; }
+  .word-1 { animation-name: word1; }
+  .word-2 { animation-name: word2; }
+  @keyframes word0 {
+    0%, 28% { opacity: 1; transform: none; filter: none; }
+    33.33% { opacity: 0; transform: none; filter: blur(12px); }
+    94% { opacity: 0; transform: translateY(28px); filter: blur(12px); }
+    100% { opacity: 1; transform: none; filter: none; }
+  }
+  @keyframes word1 {
+    0%, 33.33% { opacity: 0; transform: translateY(28px); filter: blur(12px); }
+    38.33%, 61.66% { opacity: 1; transform: none; filter: none; }
+    66.66%, 100% { opacity: 0; transform: none; filter: blur(12px); }
+  }
+  @keyframes word2 {
+    0%, 66.66% { opacity: 0; transform: translateY(28px); filter: blur(12px); }
+    71.66%, 94% { opacity: 1; transform: none; filter: none; }
+    100% { opacity: 0; transform: none; filter: blur(12px); }
+  }`;
+  const sphere = `
+  <g class="mono spin" font-size="11" text-anchor="middle" dominant-baseline="central" fill="${t.fg}" opacity="0.4">${glyphSphere(sx, sy, 270, 0.3)}</g>`;
+  const badgeX = 1216 - 300;
+  const body = `${canvas({ id: 'bn', w: W, h: H, bg: t.bg, ink: t.fg, frame: t.border, extra: sphere })}
+${mark(t, 64, 38, 32)}
+<text x="100" y="63" class="sans" font-size="25" font-weight="500" letter-spacing="-0.4" fill="${t.fg}">PolicyProbe</text>
+<rect x="1058" y="36" width="158" height="40" rx="20" fill="${t.fg}"/>
+<text x="1137" y="61" text-anchor="middle" class="sans" font-size="15" font-weight="500" fill="${t.bg}">Harness PR #74</text>
+${eyebrow({ x: 64, y: 156, label: 'Hedera Testnet · Chain 296', line: mix(t.bg, t.fg, 0.3), color: t.muted })}
+<text x="64" y="276" class="sans" font-size="116" letter-spacing="-3" fill="${t.fg}">Every policy</text>
+${words
+  .map(
+    ([word, width], i) => `<g class="word word-${i}">
+  <rect x="64" y="398" width="${width}" height="12" fill="${t.fg}" fill-opacity="0.1"/>
+  <text x="64" y="380" class="sans" font-size="116" letter-spacing="-3" fill="${t.fg}">${word}</text>
+</g>`,
+  )
+  .join('\n')}
+<text class="sans" font-size="21" fill="${t.muted}"><tspan x="64" y="452">Exit code 0 is not proof. PolicyProbe checks</tspan><tspan x="64" y="480">what actually happened onchain.</tspan></text>
+<rect x="${badgeX}" y="436" width="300" height="46" rx="23" fill="${t.bg}" stroke="${t.border}"/>
+<circle cx="${badgeX + 26}" cy="459" r="4" fill="${t.pass}" class="pulse"/>
+<text x="${badgeX + 42}" y="465" class="sans" font-size="16" font-weight="500" fill="${t.fg}">6 / 6 policies pass on testnet</text>`;
   return svg({ w: W, h: H, title: 'PolicyProbe — Expected. Executed. Verified.', css, body });
 }
 
-function flow(t) {
-  const W = 1280, H = 300;
+async function flow(t) {
+  const W = 1280, H = 390;
+  const { bg, text } = t.panel;
+  const ink = (amount) => mix(bg, text, amount);
   const steps = [
     ['01', 'Declare', 'Recipe assertion'],
     ['02', 'Provision', 'Funded actors'],
@@ -151,119 +292,133 @@ function flow(t) {
     ['04', 'Observe', 'Mirror Node read'],
     ['05', 'Compare', 'Expected vs observed'],
   ];
-  const nw = 164, nh = 108, gap = 30, x0 = 36, ny = 112, mid = ny + nh / 2;
-  const nodes = steps.map(([n, title, caption], i) => {
-    const x = x0 + i * (nw + gap);
-    const core = i === steps.length - 1;
-    const link = i === 0 ? '' : `
-<line x1="${x - gap}" y1="${mid}" x2="${x - 4}" y2="${mid}" stroke="${t.borderStrong}" stroke-width="1.5"/>
-<line x1="${x - gap}" y1="${mid}" x2="${x - 4}" y2="${mid}" stroke="${t.accent}" stroke-width="1.5" class="flow"/>
-<path d="M${x - 9} ${mid - 4}l5 4-5 4" stroke="${t.muted}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>`;
-    return `${link}
-<rect x="${x}" y="${ny}" width="${nw}" height="${nh}" rx="12" fill="${t.surface}" stroke="${core ? t.accent : t.border}" stroke-opacity="${core ? 0.75 : 1}"/>
-<text x="${x + 20}" y="${ny + 32}" class="mono" font-size="12" font-weight="600" fill="${t.accent}">${n}</text>
-<text x="${x + 20}" y="${ny + 64}" class="sans" font-size="19" font-weight="600" fill="${t.text}">${title}</text>
-<text x="${x + 20}" y="${ny + 88}" class="sans" font-size="13" fill="${t.muted}">${caption}</text>`;
-  });
-  const outcomes = [
-    [t.pass, 'Match', 'continue the run'],
-    [t.fail, 'Mismatch', 'finding → repair loop'],
-    [t.warn, 'Infra error', 'chain-assertion-infra'],
-  ];
-  const ox = 1024, ow = 220, oh = 56, from = x0 + steps.length * (nw + gap) - gap;
-  const chips = outcomes.map(([color, title, caption], i) => {
-    const cy = mid + (i - 1) * 74;
+  const cw = 156, gap = 20, x0 = 56, cycle = 5 * steps.length;
+  // Like the site's pipeline list, one step is active at a time and a progress hairline fills under it.
+  const css = `
+  .step { animation: step ${cycle}s infinite; }
+  @keyframes step { 0%, 19% { opacity: 1; } 21%, 98% { opacity: 0.4; } 100% { opacity: 1; } }
+  .progress { transform-box: fill-box; transform-origin: left; opacity: 0; animation: progress ${cycle}s linear infinite; }
+  @keyframes progress { 0% { opacity: 1; transform: scaleX(0); } 20% { opacity: 1; transform: scaleX(1); } 20.1%, 100% { opacity: 0; transform: scaleX(1); } }`;
+  const columns = steps.map(([n, title, caption], i) => {
+    const x = x0 + i * (cw + gap);
+    const delay = `animation-delay: ${-((cycle - 5 * i) % cycle)}s`;
     return `
-<path d="M${from} ${mid}C${from + 26} ${mid} ${ox - 26} ${cy} ${ox} ${cy}" stroke="${t.borderStrong}" stroke-width="1.5"/>
-<path d="M${from} ${mid}C${from + 26} ${mid} ${ox - 26} ${cy} ${ox} ${cy}" stroke="${color}" stroke-width="1.5" class="flow"/>
-<rect x="${ox}" y="${cy - oh / 2}" width="${ow}" height="${oh}" rx="10" fill="${t.surface}" stroke="${color}" stroke-opacity="0.45"/>
-<circle cx="${ox + 22}" cy="${cy}" r="9" fill="${color}" fill-opacity="0.15"/>
-<circle cx="${ox + 22}" cy="${cy}" r="4" fill="${color}"/>
-<text x="${ox + 42}" y="${cy - 4}" class="sans" font-size="15" font-weight="600" fill="${t.text}">${title}</text>
-<text x="${ox + 42}" y="${cy + 15}" class="mono" font-size="11.5" fill="${t.muted}">${caption}</text>`;
+<g class="step" style="${delay}">
+  <text x="${x}" y="222" class="sans" font-size="30" fill="${ink(0.3)}">${n}</text>
+  <text x="${x}" y="264" class="sans" font-size="26" letter-spacing="-0.4" fill="${text}">${title}</text>
+  <text x="${x}" y="292" class="sans" font-size="14.5" fill="${ink(0.6)}">${caption}</text>
+  <rect x="${x}" y="326" width="${cw}" height="1" fill="${ink(0.12)}"/>
+</g>
+<rect x="${x}" y="326" width="${cw}" height="1" fill="${text}" class="progress" style="${delay}"/>`;
   });
-  const body = `${canvas(t, W, H, 'fl')}
-<text x="${x0}" y="62" class="mono" font-size="11.5" letter-spacing="2.4" fill="${t.faint}">ONE ASSERTION · DECLARATION TO VERDICT</text>
-${nodes.join('')}
-${chips.join('')}`;
-  return svg({ w: W, h: H, title: 'How a PolicyProbe assertion reaches a verdict', body });
+  const wx = 956, wy = 170, ww = 268, wh = 180;
+  const rows = [
+    [t.pass, 'match', 'continue the run'],
+    [t.fail, 'mismatch', 'repair loop'],
+    [t.warn, 'infra', 'chain-assertion-infra'],
+  ];
+  const window = `
+<rect x="${wx}" y="${wy}" width="${ww}" height="${wh}" stroke="${ink(0.14)}"/>
+${[0, 1, 2].map((i) => `<circle cx="${wx + 22 + i * 18}" cy="${wy + 20}" r="5" fill="${ink(0.2)}"/>`).join('')}
+<text x="${wx + ww - 16}" y="${wy + 24}" text-anchor="end" class="mono" font-size="11.5" fill="${ink(0.4)}">verdict</text>
+<rect x="${wx}" y="${wy + 40}" width="${ww}" height="1" fill="${ink(0.14)}"/>
+${rows
+  .map(
+    ([color, outcome, route], i) => `
+<circle cx="${wx + 24}" cy="${wy + 68 + i * 30}" r="4" fill="${color}"/>
+<text x="${wx + 40}" y="${wy + 72 + i * 30}" class="mono" font-size="12" fill="${ink(0.7)}"><tspan fill="${text}">${outcome}</tspan> <tspan fill="${ink(0.4)}">→</tspan> ${route}</text>`,
+  )
+  .join('')}
+<rect x="${wx}" y="${wy + 150}" width="${ww}" height="1" fill="${ink(0.14)}"/>
+<circle cx="${wx + 24}" cy="${wy + 165}" r="3.5" fill="${t.pass}" class="pulse"/>
+<text x="${wx + 38}" y="${wy + 169}" class="mono" font-size="11.5" fill="${ink(0.4)}">compared in code</text>`;
+  const body = `${canvas({ id: 'fl', w: W, h: H, bg, ink: text, frame: ink(0.14), pattern: 'stripes' })}
+${eyebrow({ x: 56, y: 72, label: 'How it works', line: ink(0.3), color: ink(0.5) })}
+<text x="56" y="136" class="sans" font-size="44" letter-spacing="-1.2" fill="${text}">Five steps. <tspan fill="${ink(0.4)}">Pure code at every one.</tspan></text>
+${columns.join('')}
+${window}`;
+  return svg({ w: W, h: H, title: 'How a PolicyProbe assertion reaches a verdict', css, body });
 }
 
-function comparison(t) {
-  const W = 1280, H = 560;
+async function comparison(t) {
+  const W = 1280, H = 590;
+  const hairline = mix(t.card, t.fg, 0.3);
   const card = ({ x, tag, contract, title, observed, observedColor, tx, verdict }) => {
-    const y = 178, w = 560, h = 350;
+    const y = 176, w = 560, h = 380;
     const label = (yy, s) =>
-      `<text x="${x + 32}" y="${yy}" class="mono" font-size="11.5" letter-spacing="1.6" fill="${t.faint}">${s}</text>`;
+      `<text x="${x + 32}" y="${yy}" class="mono" font-size="12" letter-spacing="1" fill="${t.muted}">${s}</text>`;
     const value = (yy, s, color) =>
-      `<text x="${x + 168}" y="${yy}" class="mono" font-size="17" fill="${color}">${s}</text>`;
+      `<text x="${x + 168}" y="${yy}" class="mono" font-size="18" fill="${color}">${s}</text>`;
     return `
-<clipPath id="ba-${tag}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16"/></clipPath>
-<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="16" fill="${t.surface}" stroke="${t.border}"/>
-<rect x="${x}" y="${y}" width="${w}" height="3" fill="${verdict.color}" clip-path="url(#ba-${tag})"/>
-<text x="${x + 32}" y="${y + 44}" class="mono" font-size="11.5" letter-spacing="2" fill="${t.faint}">CONFIGURATION ${tag.toUpperCase()}</text>
-<text x="${x + w - 32}" y="${y + 44}" text-anchor="end" class="mono" font-size="12" fill="${t.muted}">${contract}</text>
-<text x="${x + 32}" y="${y + 86}" class="sans" font-size="28" font-weight="600" letter-spacing="-0.5" fill="${t.text}">${title}</text>
-<line x1="${x + 32}" y1="${y + 110}" x2="${x + w - 32}" y2="${y + 110}" stroke="${t.border}"/>
-${label(y + 150, 'DECLARED')}${value(y + 150, 'mustRevert', t.text)}
-${label(y + 194, 'OBSERVED')}${value(y + 194, observed, observedColor)}
-${label(y + 238, 'TX HASH')}${value(y + 238, tx, t.muted)}
-<line x1="${x + 32}" y1="${y + 268}" x2="${x + w - 32}" y2="${y + 268}" stroke="${t.border}"/>
-${pill({ x: x + 32, y: y + 292, ...verdict })}
-<text x="${x + 32 + verdict.w + 20}" y="${y + 312}" class="${verdict.captionClass}" font-size="${verdict.captionSize}" fill="${t.muted}">${verdict.caption}</text>`;
+<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${t.card}" stroke="${t.border}"/>
+<rect x="${x}" y="${y}" width="${w}" height="2" fill="${verdict.color}"/>
+${eyebrow({ x: x + 32, y: y + 52, label: `Configuration ${tag}`, line: hairline, color: t.muted })}
+<text x="${x + w - 32}" y="${y + 52}" text-anchor="end" class="mono" font-size="13" fill="${t.muted}">${contract}</text>
+<text x="${x + 32}" y="${y + 110}" class="sans" font-size="36" letter-spacing="-0.9" fill="${t.fg}">${title}</text>
+<rect x="${x + 32}" y="${y + 138}" width="${w - 64}" height="1" fill="${t.border}"/>
+${label(y + 184, 'DECLARED')}${value(y + 184, 'mustRevert', t.fg)}
+${label(y + 228, 'OBSERVED')}${value(y + 228, observed, observedColor)}
+${label(y + 272, 'TX HASH')}${value(y + 272, tx, t.muted)}
+<rect x="${x + 32}" y="${y + 302}" width="${w - 64}" height="1" fill="${t.border}"/>
+${pill({ x: x + 32, y: y + 322, ...verdict })}
+<text x="${x + 32 + verdict.w + 18}" y="${y + 343}" class="${verdict.font}" font-size="${verdict.size}" fill="${t.muted}">${verdict.caption}</text>`;
   };
-  const connector = 'M640 114V140M640 140H352Q340 140 340 152V178M640 140H928Q940 140 940 152V178';
-  const body = `${canvas(t, W, H, 'ba')}
-<text x="640" y="44" text-anchor="middle" class="mono" font-size="11.5" letter-spacing="2.4" fill="${t.faint}">SAME ASSERTION · SAME ACTOR · SAME ACTION</text>
-<path d="${connector}" stroke="${t.borderStrong}" stroke-width="1.5"/>
-<path d="${connector}" stroke="${t.accent}" stroke-width="1.5" class="flow"/>
-<rect x="320" y="62" width="640" height="52" rx="26" fill="${t.surface}" stroke="${t.borderStrong}"/>
-<text x="640" y="93" text-anchor="middle" class="mono" font-size="14" fill="${t.muted}" xml:space="preserve"><tspan fill="${t.text}" font-weight="600">reject-unverified-transfer</tspan><tspan fill="${t.faint}">  ·  </tspan>actor <tspan fill="${t.text}">attacker</tspan><tspan fill="${t.faint}">  ·  </tspan>expect <tspan fill="${t.accent}">mustRevert</tspan></text>
+  const connectors = 'M340 136V176M940 136V176';
+  const body = `${canvas({ id: 'ba', w: W, h: H, bg: t.bg, ink: t.fg, frame: t.border })}
+${eyebrow({ x: 60, y: 54, label: 'Same assertion · same actor · same action', line: mix(t.bg, t.fg, 0.3), color: t.muted })}
+<text x="1220" y="54" text-anchor="end" class="mono" font-size="14" fill="${t.muted}">Hedera testnet</text>
+<rect x="60" y="80" width="1160" height="56" fill="${t.card}" stroke="${t.border}"/>
+<text x="88" y="114" class="mono" font-size="15" font-weight="600" fill="${t.fg}">reject-unverified-transfer</text>
+<text x="560" y="114" class="mono" font-size="15" fill="${t.muted}">actor <tspan fill="${t.fg}">attacker</tspan></text>
+<text x="800" y="114" class="mono" font-size="15" fill="${t.muted}">expect <tspan fill="${t.fg}">mustRevert</tspan></text>
+<text x="1192" y="114" text-anchor="end" class="mono" font-size="13" fill="${t.muted}"><tspan fill="${t.fail}">●</tspan> 1 finding   <tspan fill="${t.pass}">●</tspan> 1 pass</text>
+<path d="${connectors}" stroke="${t.border}"/>
+<path d="${connectors}" stroke="${t.muted}" class="dash"/>
 ${card({
-  x: 60, tag: 'a', contract: '0xeff72A…c9E03', title: 'Whitelist disabled',
+  x: 60, tag: 'A', contract: '0xeff72A…c9E03', title: 'Whitelist disabled',
   observed: 'SUCCESS', observedColor: t.fail, tx: '0xdcf971…8877c',
   verdict: {
-    w: 116, color: t.fail, label: 'FINDING', icon: 'cross',
-    caption: 'chain-assertion:reject-unverified-transfer', captionClass: 'mono', captionSize: 12.5,
+    w: 118, color: t.fail, label: 'FINDING', icon: 'cross',
+    caption: 'chain-assertion:reject-unverified-transfer', font: 'mono', size: 13,
   },
 })}
 ${card({
-  x: 660, tag: 'b', contract: '0x19CD78…606B8', title: 'Whitelist enabled',
-  observed: 'CONTRACT_REVERT_EXECUTED', observedColor: t.text, tx: '0x513432…91f6a',
+  x: 660, tag: 'B', contract: '0x19CD78…606B8', title: 'Whitelist enabled',
+  observed: 'CONTRACT_REVERT_EXECUTED', observedColor: t.fg, tx: '0x513432…91f6a',
   verdict: {
-    w: 84, color: t.pass, label: 'PASS', icon: 'check',
-    caption: 'Assertion satisfied — no finding emitted', captionClass: 'sans', captionSize: 14,
+    w: 88, color: t.pass, label: 'PASS', icon: 'check',
+    caption: 'Assertion satisfied — no finding emitted', font: 'sans', size: 15,
   },
 })}`;
   return svg({ w: W, h: H, title: 'The same assertion against a misconfigured and a corrected bond', body });
 }
 
-function stats(t) {
+async function stats(t) {
   const W = 1280, H = 180;
   const items = [
-    ['6', '/6', 'policies passed on testnet', 'ATS bond · Mirror Node evidence'],
-    ['+82', '', 'Harness tests added', '195 → 277 in the full suite'],
-    ['2', '', 'assertion families', 'outcome · balance delta'],
-    ['~6', '', 'recipe lines per assertion', 'the engine owns the rest'],
+    ['6/6', 'ATS policies verified'],
+    ['+82', 'Harness tests · 277 total'],
+    ['2', 'assertion families'],
+    ['~6', 'recipe lines per assertion'],
   ];
-  const cells = items.map(([n, suffix, label, sub], i) => {
-    const cx = 160 + i * 320;
-    const divider = i === 0 ? '' : `<line x1="${cx - 160}" y1="44" x2="${cx - 160}" y2="136" stroke="${t.border}"/>`;
-    return `${divider}
-<text x="${cx}" y="84" text-anchor="middle" class="sans" font-size="50" font-weight="650" letter-spacing="-1.5" fill="${t.text}">${n}<tspan fill="${t.faint}">${suffix}</tspan></text>
-<text x="${cx}" y="116" text-anchor="middle" class="sans" font-size="15" font-weight="500" fill="${t.text}">${label}</text>
-<text x="${cx}" y="140" text-anchor="middle" class="mono" font-size="12" fill="${t.faint}">${sub}</text>`;
+  const cells = items.map(([n, label], i) => {
+    const x = 56 + i * 292;
+    return `
+<text x="${x}" y="100" class="sans" font-size="64" letter-spacing="-1.6" fill="${t.fg}">${n}</text>
+<text x="${x}" y="136" class="mono" font-size="13.5" fill="${t.muted}">${label}</text>`;
   });
-  return svg({ w: W, h: H, title: 'PolicyProbe by the numbers', body: `${canvas(t, W, H, 'st')}${cells.join('')}` });
+  const body = `${canvas({ id: 'st', w: W, h: H, bg: t.bg, ink: t.fg, frame: t.border })}${cells.join('')}`;
+  return svg({ w: W, h: H, title: 'PolicyProbe by the numbers', body });
 }
 
-const markFile = (t) => svg({ w: 666, h: 853, title: 'PolicyProbe', body: mark(t, 0, 0, 853) });
+const markArt = (t) => svg({ w: 666, h: 853, title: 'PolicyProbe', body: mark(t, 0, 0, 853), fonts: false });
 
-const ART = { banner, flow, comparison, stats, mark: markFile };
+const ART = { banner, flow, comparison, stats, mark: markArt };
 
 for (const [name, render] of Object.entries(ART)) {
   for (const [theme, t] of Object.entries(THEMES)) {
-    writeFileSync(join(OUT, `${name}-${theme}.svg`), render(t));
+    const output = await render(t);
+    writeFileSync(join(OUT, `${name}-${theme}.svg`), output);
+    console.log(`${name}-${theme}.svg  ${(output.length / 1024).toFixed(1)} KB`);
   }
 }
-console.log(`wrote ${Object.keys(ART).length * Object.keys(THEMES).length} SVGs to ${OUT}`);
