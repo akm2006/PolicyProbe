@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="300" viewBox="0 0 1280 300" fill="none" role="img" aria-label="How a PolicyProbe assertion reaches a verdict">
+<title>How a PolicyProbe assertion reaches a verdict</title>
+<style>
+  .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .serif { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; }
+  .flow { stroke-dasharray: 3 7; animation: flow 1.4s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -20; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }</style>
+
+<defs>
+  <clipPath id="fl-frame"><rect width="1280" height="300" rx="20"/></clipPath>
+  <pattern id="fl-dots" width="22" height="22" patternUnits="userSpaceOnUse">
+    <circle cx="1.5" cy="1.5" r="1.1" fill="#ffffff" fill-opacity="0.07"/>
+  </pattern>
+  <radialGradient id="fl-fade" cx="50%" cy="50%" r="65%">
+    <stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <mask id="fl-mask"><rect width="1280" height="300" fill="url(#fl-fade)"/></mask>
+  <radialGradient id="fl-glow">
+    <stop offset="0" stop-color="#734AF9" stop-opacity="0.32"/><stop offset="1" stop-color="#734AF9" stop-opacity="0"/>
+  </radialGradient>
+</defs>
+<g clip-path="url(#fl-frame)">
+  <rect width="1280" height="300" fill="#0c0a09"/>
+  <rect width="1280" height="300" fill="url(#fl-dots)" mask="url(#fl-mask)"/>
+  
+</g>
+<rect x="0.5" y="0.5" width="1279" height="299" rx="19.5" stroke="#292524"/>
+<text x="36" y="62" class="mono" font-size="11.5" letter-spacing="2.4" fill="#77706a">ONE ASSERTION · DECLARATION TO VERDICT</text>
+
+<rect x="36" y="112" width="164" height="108" rx="12" fill="#151311" stroke="#292524" stroke-opacity="1"/>
+<text x="56" y="144" class="mono" font-size="12" font-weight="600" fill="#9277ff">01</text>
+<text x="56" y="176" class="sans" font-size="19" font-weight="600" fill="#faf9f6">Declare</text>
+<text x="56" y="200" class="sans" font-size="13" fill="#a8a29e">Recipe assertion</text>
+<line x1="200" y1="166" x2="226" y2="166" stroke="#3b3632" stroke-width="1.5"/>
+<line x1="200" y1="166" x2="226" y2="166" stroke="#9277ff" stroke-width="1.5" class="flow"/>
+<path d="M221 162l5 4-5 4" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="230" y="112" width="164" height="108" rx="12" fill="#151311" stroke="#292524" stroke-opacity="1"/>
+<text x="250" y="144" class="mono" font-size="12" font-weight="600" fill="#9277ff">02</text>
+<text x="250" y="176" class="sans" font-size="19" font-weight="600" fill="#faf9f6">Provision</text>
+<text x="250" y="200" class="sans" font-size="13" fill="#a8a29e">Funded actors</text>
+<line x1="394" y1="166" x2="420" y2="166" stroke="#3b3632" stroke-width="1.5"/>
+<line x1="394" y1="166" x2="420" y2="166" stroke="#9277ff" stroke-width="1.5" class="flow"/>
+<path d="M415 162l5 4-5 4" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="424" y="112" width="164" height="108" rx="12" fill="#151311" stroke="#292524" stroke-opacity="1"/>
+<text x="444" y="144" class="mono" font-size="12" font-weight="600" fill="#9277ff">03</text>
+<text x="444" y="176" class="sans" font-size="19" font-weight="600" fill="#faf9f6">Execute</text>
+<text x="444" y="200" class="sans" font-size="13" fill="#a8a29e">Action as signer</text>
+<line x1="588" y1="166" x2="614" y2="166" stroke="#3b3632" stroke-width="1.5"/>
+<line x1="588" y1="166" x2="614" y2="166" stroke="#9277ff" stroke-width="1.5" class="flow"/>
+<path d="M609 162l5 4-5 4" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="618" y="112" width="164" height="108" rx="12" fill="#151311" stroke="#292524" stroke-opacity="1"/>
+<text x="638" y="144" class="mono" font-size="12" font-weight="600" fill="#9277ff">04</text>
+<text x="638" y="176" class="sans" font-size="19" font-weight="600" fill="#faf9f6">Observe</text>
+<text x="638" y="200" class="sans" font-size="13" fill="#a8a29e">Mirror Node read</text>
+<line x1="782" y1="166" x2="808" y2="166" stroke="#3b3632" stroke-width="1.5"/>
+<line x1="782" y1="166" x2="808" y2="166" stroke="#9277ff" stroke-width="1.5" class="flow"/>
+<path d="M803 162l5 4-5 4" stroke="#a8a29e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="812" y="112" width="164" height="108" rx="12" fill="#151311" stroke="#9277ff" stroke-opacity="0.75"/>
+<text x="832" y="144" class="mono" font-size="12" font-weight="600" fill="#9277ff">05</text>
+<text x="832" y="176" class="sans" font-size="19" font-weight="600" fill="#faf9f6">Compare</text>
+<text x="832" y="200" class="sans" font-size="13" fill="#a8a29e">Expected vs observed</text>
+
+<path d="M976 166C1002 166 998 92 1024 92" stroke="#3b3632" stroke-width="1.5"/>
+<path d="M976 166C1002 166 998 92 1024 92" stroke="#4cc38a" stroke-width="1.5" class="flow"/>
+<rect x="1024" y="64" width="220" height="56" rx="10" fill="#151311" stroke="#4cc38a" stroke-opacity="0.45"/>
+<circle cx="1046" cy="92" r="9" fill="#4cc38a" fill-opacity="0.15"/>
+<circle cx="1046" cy="92" r="4" fill="#4cc38a"/>
+<text x="1066" y="88" class="sans" font-size="15" font-weight="600" fill="#faf9f6">Match</text>
+<text x="1066" y="107" class="mono" font-size="11.5" fill="#a8a29e">continue the run</text>
+<path d="M976 166C1002 166 998 166 1024 166" stroke="#3b3632" stroke-width="1.5"/>
+<path d="M976 166C1002 166 998 166 1024 166" stroke="#f26d57" stroke-width="1.5" class="flow"/>
+<rect x="1024" y="138" width="220" height="56" rx="10" fill="#151311" stroke="#f26d57" stroke-opacity="0.45"/>
+<circle cx="1046" cy="166" r="9" fill="#f26d57" fill-opacity="0.15"/>
+<circle cx="1046" cy="166" r="4" fill="#f26d57"/>
+<text x="1066" y="162" class="sans" font-size="15" font-weight="600" fill="#faf9f6">Mismatch</text>
+<text x="1066" y="181" class="mono" font-size="11.5" fill="#a8a29e">finding → repair loop</text>
+<path d="M976 166C1002 166 998 240 1024 240" stroke="#3b3632" stroke-width="1.5"/>
+<path d="M976 166C1002 166 998 240 1024 240" stroke="#e3a73f" stroke-width="1.5" class="flow"/>
+<rect x="1024" y="212" width="220" height="56" rx="10" fill="#151311" stroke="#e3a73f" stroke-opacity="0.45"/>
+<circle cx="1046" cy="240" r="9" fill="#e3a73f" fill-opacity="0.15"/>
+<circle cx="1046" cy="240" r="4" fill="#e3a73f"/>
+<text x="1066" y="236" class="sans" font-size="15" font-weight="600" fill="#faf9f6">Infra error</text>
+<text x="1066" y="255" class="mono" font-size="11.5" fill="#a8a29e">chain-assertion-infra</text>
+</svg>

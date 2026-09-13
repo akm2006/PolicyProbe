@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" fill="none" role="img" aria-label="PolicyProbe — Expected. Executed. Verified.">
+<title>PolicyProbe — Expected. Executed. Verified.</title>
+<style>
+  .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .serif { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; }
+  .flow { stroke-dasharray: 3 7; animation: flow 1.4s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -20; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+  .breathe { animation: breathe 7s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+  .scan { animation: scan 5s ease-in-out infinite; opacity: 0; }
+  @keyframes scan { 0% { transform: translateY(0); opacity: 0; } 20%, 80% { opacity: 1; } 100% { transform: translateY(150px); opacity: 0; } }
+  .pulse { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-out infinite; }
+  @keyframes pulse { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(3.4); opacity: 0; } }</style>
+
+<defs>
+  <clipPath id="bn-frame"><rect width="1280" height="440" rx="20"/></clipPath>
+  <pattern id="bn-dots" width="22" height="22" patternUnits="userSpaceOnUse">
+    <circle cx="1.5" cy="1.5" r="1.1" fill="#1c1917" fill-opacity="0.08"/>
+  </pattern>
+  <radialGradient id="bn-fade" cx="50%" cy="50%" r="65%">
+    <stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+  </radialGradient>
+  <mask id="bn-mask"><rect width="1280" height="440" fill="url(#bn-fade)"/></mask>
+  <radialGradient id="bn-glow">
+    <stop offset="0" stop-color="#734AF9" stop-opacity="0.14"/><stop offset="1" stop-color="#734AF9" stop-opacity="0"/>
+  </radialGradient>
+</defs>
+<g clip-path="url(#bn-frame)">
+  <rect width="1280" height="440" fill="#faf9f6"/>
+  <rect width="1280" height="440" fill="url(#bn-dots)" mask="url(#bn-mask)"/>
+  
+  <ellipse cx="190" cy="230" rx="360" ry="300" fill="url(#bn-glow)" class="breathe"/>
+  <ellipse cx="1000" cy="230" rx="420" ry="260" fill="url(#bn-glow)" opacity="0.5"/>
+  <polygon points="1010,-60 1340,50 1340,520 1010,410" stroke="#e7e5e4" stroke-width="1.5"/>
+</g>
+<rect x="0.5" y="0.5" width="1279" height="439" rx="19.5" stroke="#e7e5e4"/>
+<defs>
+  <clipPath id="bn-card"><rect x="772" y="100" width="420" height="262" rx="14"/></clipPath>
+  <linearGradient id="bn-scan" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#734AF9" stop-opacity="0"/>
+    <stop offset="0.5" stop-color="#734AF9" stop-opacity="0.12"/>
+    <stop offset="1" stop-color="#734AF9" stop-opacity="0"/>
+  </linearGradient>
+</defs>
+
+<g transform="translate(88 135) scale(0.1993)">
+  <path d="M0 180L351 297.5L207.5 362L97 323.5V638.5L245 685V597.5L374.5 646.5V853L0 730.5V180Z" fill="#1c1917"/>
+  <path d="M301 580L429.5 520.5L560 562.5V234.5L391 180V264L275.5 218.5V0L666 122.5V712L301 580Z" fill="#734AF9"/>
+  <path d="M245 390L391 332.5V489L245 542.5V390Z" fill="#734AF9"/>
+</g>
+<text x="262" y="214" class="sans" font-size="74" font-weight="650" letter-spacing="-2.4" fill="#1c1917">PolicyProbe</text>
+<text x="265" y="264" class="serif" font-size="31" font-style="italic" fill="#6b645c">Expected. Executed. <tspan fill="#734AF9">Verified.</tspan></text>
+<rect x="266" y="296" width="36" height="2" rx="1" fill="#734AF9"/>
+<text x="266" y="334" class="mono" font-size="13.5" letter-spacing="2.4" fill="#6b645c">DETERMINISTIC ON-CHAIN ASSERTIONS</text>
+<text x="266" y="358" class="mono" font-size="13.5" letter-spacing="2.4" fill="#948d86">FOR HEDERA HARNESS</text>
+
+<rect x="800" y="72" width="420" height="262" rx="14" fill="#ffffff" stroke="#d6d3d1" opacity="0.35"/>
+<rect x="786" y="86" width="420" height="262" rx="14" fill="#ffffff" stroke="#d6d3d1" opacity="0.7"/>
+<rect x="772" y="100" width="420" height="262" rx="14" fill="#ffffff" stroke="#d6d3d1"/>
+<g clip-path="url(#bn-card)"><rect class="scan" x="772" y="144" width="420" height="64" fill="url(#bn-scan)"/></g>
+<text x="800" y="128" class="mono" font-size="12" letter-spacing="1.2" fill="#948d86">chainValidation.assertions</text>
+<rect x="1092" y="112" width="74" height="22" rx="11" fill="#f5f4f1" stroke="#e7e5e4"/>
+<circle cx="1106" cy="123" r="3" fill="#1f8a55"/>
+<text x="1115" y="127" class="mono" font-size="11" fill="#6b645c">testnet</text>
+<line x1="772" y1="144" x2="1192" y2="144" stroke="#e7e5e4"/>
+<circle cx="804" cy="176" r="4" fill="#734AF9" class="pulse"/>
+<circle cx="804" cy="176" r="4" fill="#734AF9"/>
+<text x="818" y="181" class="mono" font-size="16" font-weight="600" fill="#1c1917">reject-unverified-transfer</text>
+
+  <text x="800" y="218" class="mono" font-size="13" fill="#948d86">actor</text>
+  <text x="900" y="218" class="mono" font-size="14" fill="#1c1917">attacker</text>
+
+  <text x="800" y="246" class="mono" font-size="13" fill="#948d86">expect</text>
+  <text x="900" y="246" class="mono" font-size="14" fill="#1c1917">mustRevert</text>
+
+  <text x="800" y="274" class="mono" font-size="13" fill="#948d86">observed</text>
+  <text x="900" y="274" class="mono" font-size="14" fill="#1c1917">CONTRACT_REVERT_EXECUTED</text>
+<line x1="772" y1="298" x2="1192" y2="298" stroke="#e7e5e4"/>
+
+<rect x="800" y="314" width="84" height="30" rx="15" fill="#1f8a55" fill-opacity="0.12" stroke="#1f8a55" stroke-opacity="0.45"/>
+<path d="M814 330l3.5 3.5L825 325" stroke="#1f8a55" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="834" y="334" class="mono" font-size="13" font-weight="700" letter-spacing="1" fill="#1f8a55">PASS</text>
+<text x="900" y="334" class="sans" font-size="13.5" fill="#6b645c">Verdict from Mirror Node evidence</text>
+</svg>

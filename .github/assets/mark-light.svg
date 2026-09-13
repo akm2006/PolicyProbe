@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="666" height="853" viewBox="0 0 666 853" fill="none" role="img" aria-label="PolicyProbe">
+<title>PolicyProbe</title>
+<style>
+  .sans { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+  .mono { font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace; }
+  .serif { font-family: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; }
+  .flow { stroke-dasharray: 3 7; animation: flow 1.4s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -20; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }</style>
+
+<g transform="translate(0 0) scale(1)">
+  <path d="M0 180L351 297.5L207.5 362L97 323.5V638.5L245 685V597.5L374.5 646.5V853L0 730.5V180Z" fill="#1c1917"/>
+  <path d="M301 580L429.5 520.5L560 562.5V234.5L391 180V264L275.5 218.5V0L666 122.5V712L301 580Z" fill="#734AF9"/>
+  <path d="M245 390L391 332.5V489L245 542.5V390Z" fill="#734AF9"/>
+</g>
+</svg>
