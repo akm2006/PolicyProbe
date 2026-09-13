@@ -28,8 +28,9 @@ export const metadata: Metadata = {
   description:
     "Expected. Executed. Verified. PolicyProbe executes real onchain actions, compares observed outcomes against declared expectations, and turns mismatches into structured repair findings for Hedera Harness.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    // ?v= busts the browser's favicon cache after the recolor
+    icon: "/favicon.svg?v=2",
+    shortcut: "/favicon.svg?v=2",
     apple: "/logo.png",
   },
   openGraph: {

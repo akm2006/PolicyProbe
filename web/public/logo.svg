@@ -1,5 +1,13 @@
 <svg width="666" height="853" viewBox="0 0 666 853" fill="none" xmlns="http://www.w3.org/2000/svg">
-<path d="M0 180L351 297.5L207.5 362L97 323.5V638.5L245 685V597.5L374.5 646.5V853L0 730.5V180Z" fill="white"/>
-<path d="M301 580L429.5 520.5L560 562.5V234.5L391 180V264L275.5 218.5V0L666 122.5V712L301 580Z" fill="#734AF9"/>
-<path d="M245 390L391 332.5V489L245 542.5V390Z" fill="#734AF9"/>
+<style>
+  .expected, .assertion { fill: #1c1917; }
+  .observed { fill: #6b645c; }
+  @media (prefers-color-scheme: dark) {
+    .expected, .assertion { fill: #faf9f6; }
+    .observed { fill: #a8a29e; }
+  }
+</style>
+<path class="expected" d="M0 180L351 297.5L207.5 362L97 323.5V638.5L245 685V597.5L374.5 646.5V853L0 730.5V180Z"/>
+<path class="observed" d="M301 580L429.5 520.5L560 562.5V234.5L391 180V264L275.5 218.5V0L666 122.5V712L301 580Z"/>
+<path class="assertion" d="M245 390L391 332.5V489L245 542.5V390Z"/>
 </svg>

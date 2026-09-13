@@ -20,17 +20,17 @@ export const PolicyProbeLogo: React.FC<PolicyProbeLogoProps> = ({
 }) => {
   const shouldReduceMotion = useReducedMotion();
 
-  // Color mapping based on DESIGN.md §8 (Violet for Brand/Observed, Green for PASS, Red for FAIL)
+  // Monochrome brand from the site theme; only PASS / FAIL carry color
   const getAssertionFill = () => {
     switch (state) {
       case "pass":
-        return "#22C55E"; // --pp-pass
+        return "var(--pass)";
       case "fail":
-        return "#EF4444"; // --pp-fail
+        return "var(--fail)";
       case "evaluating":
-        return "#A855F7"; // Active pulsing
+        return "var(--muted-foreground)";
       default:
-        return "#734AF9"; // Canonical probe violet
+        return "currentColor";
     }
   };
 
@@ -78,10 +78,10 @@ export const PolicyProbeLogo: React.FC<PolicyProbeLogoProps> = ({
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
       />
 
-      {/* Path 2: Observed State (Violet Form) */}
+      {/* Path 2: Observed State (muted theme tone) */}
       <motion.path
         d="M301 580L429.5 520.5L560 562.5V234.5L391 180V264L275.5 218.5V0L666 122.5V712L301 580Z"
-        fill="#734AF9"
+        fill="var(--muted-foreground)"
         variants={shouldReduceMotion ? {} : observedVariants}
         animate={state}
         transition={{ type: "spring", stiffness: 260, damping: 22 }}
