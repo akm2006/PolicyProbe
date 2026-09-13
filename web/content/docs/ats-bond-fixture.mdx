@@ -1,0 +1,110 @@
+---
+title: ATS bond fixture
+description: A real bond issued through Asset Tokenization Studio on Hedera testnet, with six policies asserted against it.
+---
+
+The fixture issues an "Atlas Infrastructure Note 2027" bond (`AINX27`) through the existing [Asset Tokenization Studio](https://github.com/hashgraph/asset-tokenization-studio) factory on Hedera testnet, then evaluates deterministic assertions against it with the Harness feature-branch build.
+
+It is an integration fixture for the engine, not a dependency of it. Everything ATS-specific lives here; see [ADR-003](/docs/decisions#adr-003-keep-ats-specific-behavior-in-the-fixture).
+
+## Policies
+
+| Assertion | Signer | Action | Expected |
+| --------- | ------ | ------ | -------- |
+| `reject-unverified-transfer` | Alice | Transfer 1 unit to the never-whitelisted attacker address | Revert |
+| `verified-transfer-succeeds` | Alice | Transfer 1 unit to verified Bob | Success |
+| `attacker-cannot-freeze` | Attacker | Freeze Bob | Revert |
+| `frozen-holder-cannot-transfer` | Carol, frozen | Transfer 1 unit to Bob | Revert |
+| `compliance-can-pause` | Operator, holding the pauser role | Pause the bond | Success |
+| `paused-asset-blocks-transfer` | Alice | Transfer 1 unit to Bob while paused | Revert |
+
+The order matters. `compliance-can-pause` runs before `paused-asset-blocks-transfer`, and the suite unpauses the bond when it finishes so the next run starts from usable state.
+
+## Files
+
+<Files>
+  <Folder name="fixtures/ats-bond" defaultOpen>
+    <Folder name="src" defaultOpen>
+      <Folder name="actions">
+        <File name="grant-kyc.ts" />
+        <File name="grant-role.ts" />
+        <File name="issue.ts" />
+        <File name="set-control-list.ts" />
+        <File name="set-frozen.ts" />
+        <File name="set-pause.ts" />
+        <File name="transfer.ts" />
+      </Folder>
+      <File name="01-deploy-bond.ts" />
+      <File name="asset.ts" />
+      <File name="constants.ts" />
+      <File name="deployBond.ts" />
+      <File name="setup-actors.ts" />
+      <File name="signers.ts" />
+    </Folder>
+    <File name="02-setup-policy-fixtures.ts" />
+    <File name="run-policy-suite.mjs" />
+    <File name="run-before-after-demo.mjs" />
+    <File name="EVIDENCE.md" />
+  </Folder>
+</Files>
+
+| File | Purpose |
+| ---- | ------- |
+| `src/setup-actors.ts` | Creates four funded ECDSA actor accounts and writes their keys to the ignored `.actors.json` |
+| `src/deployBond.ts`, `src/01-deploy-bond.ts` | Bond deployment through the ATS factory, adapted from ATS with attribution |
+| `02-setup-policy-fixtures.ts` | Grants roles, whitelists holders, issues units, and freezes Carol |
+| `src/actions/*.ts` | One-purpose transaction commands, each printing the hash it submitted |
+| `src/asset.ts` | Connects the ATS facet interfaces on the bond's diamond, and reports transactions for the engine |
+| `src/signers.ts` | Signs with `HARNESS_SIGNER_PRIVATE_KEY`, falling back to `HEDERA_OPERATOR_KEY` for standalone runs |
+| `src/constants.ts` | ATS role hashes and the pinned testnet factory and resolver addresses |
+| `run-policy-suite.mjs` | Runs all six assertions |
+| `run-before-after-demo.mjs` | Applies one assertion to a misconfigured bond and a corrected bond |
+
+## How the suite calls the engine
+
+The suite imports `runChainAssertions` from the Harness build, the same function that runs a recipe's `chainValidation.assertions`, and passes the declarations inline:
+
+```js title="run-policy-suite.mjs (simplified)"
+const { runChainAssertions } = await import(
+  pathToFileURL(path.join(HARNESS_DIST, "validation/chainAssertions.js")).href
+);
+
+const findings = await runChainAssertions({
+  workspacePath,
+  chainValidation: {
+    enabled: true,
+    network: "testnet",
+    operator: { accountIdEnv: "HEDERA_OPERATOR_ID", privateKeyEnv: "HEDERA_OPERATOR_KEY" },
+    fundingHbar: 10,
+    sweepBack: false,
+    expose: { browserLocalStorageKey: "burnerWallet.pk", envVars: [] },
+    assertions,
+  },
+  primarySigner,
+  actorSigners: { alice, bob, carol, attacker },
+});
+```
+
+An empty `findings` array means every assertion passed. In a recipe, one of these assertions would read:
+
+```yaml title=".harness/spec.yaml"
+- id: attacker-cannot-freeze
+  description: An account without the Pauser/Freeze role must not freeze a holder
+  actor: attacker
+  action:
+    name: attacker-attempts-freeze
+    command: npx cross-env BOND_DIAMOND_ADDRESS=0x... TARGET_ADDRESS=0x... FROZEN=true npx tsx src/actions/set-frozen.ts
+    timeoutMs: 30000
+  expect:
+    outcome: mustRevert
+```
+
+## Why the fixture skips `reasonContains`
+
+ATS contracts revert with custom Solidity errors. Decoding those needs the ATS ABI, which the generic engine deliberately does not carry, so a `reasonContains` check would only see the coarse `CONTRACT_REVERT_EXECUTED` status. The fixture asserts `mustRevert` alone, which is still a deterministic check that the call reverted. See [Transaction outcomes](/docs/transaction-outcomes#matching-the-revert-reason).
+
+## Attribution
+
+`src/deployBond.ts` and `src/constants.ts` adapt Apache-2.0 code from `hashgraph/asset-tokenization-studio` release `v.8.0.0-ats`, pinned to match `@hashgraph/asset-tokenization-contracts@8.0.0`. The bond is issued through the existing ATS testnet factory `0.0.9213391` rather than a redeployed ATS system.
+
+To run the fixture yourself, follow the [Quickstart](/docs/quickstart).

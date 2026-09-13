@@ -1,0 +1,28 @@
+{
+  "title": "PolicyProbe",
+  "pages": [
+    "---Getting started---",
+    "index",
+    "quickstart",
+    "how-it-works",
+    "---Writing assertions---",
+    "recipe-reference",
+    "transaction-outcomes",
+    "balance-deltas",
+    "actors",
+    "findings",
+    "---ATS bond fixture---",
+    "ats-bond-fixture",
+    "evidence",
+    "---Project---",
+    "architecture",
+    "benchmark",
+    "decisions",
+    "related-work",
+    "troubleshooting",
+    "ai-usage",
+    "---Explore---",
+    "[Verification ledger](/proof)",
+    "[Evidence explorer](/evidence)"
+  ]
+}

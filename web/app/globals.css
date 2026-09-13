@@ -1,6 +1,6 @@
 @import "tailwindcss";
-
-@custom-variant dark (&:is(.dark *));
+/* Fumadocs layout, components, and typography. It also defines the `dark` variant. */
+@import "fumadocs-ui/css/preset.css";
 
 :root {
   --background: oklch(0.985 0.002 90);
@@ -25,7 +25,60 @@
   --fail: oklch(0.577 0.245 27.325);
 }
 
+/*
+ * Dark palette. The docs theme switch puts `.dark` on <html>; the marketing site is light-only,
+ * so the tokens flip only while the docs layout ([data-pp-docs]) is mounted.
+ */
+:root.dark:has([data-pp-docs]) {
+  color-scheme: dark;
+  --background: oklch(0.145 0.003 60);
+  --foreground: oklch(0.96 0.003 90);
+  --card: oklch(0.175 0.003 60);
+  --card-foreground: oklch(0.96 0.003 90);
+  --primary: oklch(0.96 0.003 90);
+  --primary-foreground: oklch(0.145 0.003 60);
+  --secondary: oklch(0.2 0.003 60);
+  --secondary-foreground: oklch(0.96 0.003 90);
+  --muted: oklch(0.2 0.003 60);
+  --muted-foreground: oklch(0.7 0.01 60);
+  --accent: oklch(0.25 0.004 60);
+  --accent-foreground: oklch(0.96 0.003 90);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.96 0.003 90);
+  --pass: oklch(0.72 0.14 155);
+  --fail: oklch(0.68 0.2 27);
+}
+
 @theme inline {
+  /* Fumadocs tokens, mapped onto the site palette */
+  --color-fd-background: var(--background);
+  --color-fd-foreground: var(--foreground);
+  --color-fd-muted: var(--muted);
+  --color-fd-muted-foreground: var(--muted-foreground);
+  --color-fd-popover: var(--card);
+  --color-fd-popover-foreground: var(--card-foreground);
+  --color-fd-card: var(--card);
+  --color-fd-card-foreground: var(--card-foreground);
+  --color-fd-border: var(--border);
+  --color-fd-primary: var(--primary);
+  --color-fd-primary-foreground: var(--primary-foreground);
+  --color-fd-secondary: var(--secondary);
+  --color-fd-secondary-foreground: var(--secondary-foreground);
+  --color-fd-accent: var(--accent);
+  --color-fd-accent-foreground: var(--accent-foreground);
+  --color-fd-ring: var(--ring);
+  --color-fd-overlay: oklch(0 0 0 / 0.2);
+  --color-fd-info: var(--muted-foreground);
+  --color-fd-warning: oklch(0.769 0.188 70.08);
+  --color-fd-error: var(--fail);
+  --color-fd-success: var(--pass);
+  --color-fd-idea: oklch(0.705 0.209 60.849);
+  --color-fd-diff-remove: color-mix(in oklab, var(--fail) 12%, transparent);
+  --color-fd-diff-remove-symbol: var(--fail);
+  --color-fd-diff-add: color-mix(in oklab, var(--pass) 12%, transparent);
+  --color-fd-diff-add-symbol: var(--pass);
+
   --font-sans: var(--font-instrument), "Instrument Sans", system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), "JetBrains Mono", monospace;
   --font-display: var(--font-instrument-serif), "Instrument Serif", Georgia, serif;
@@ -145,4 +198,36 @@
     pointer-events: none;
     z-index: 1;
   }
+}
+
+/*
+ * Docs overrides. Unlayered on purpose so they win over Fumadocs' utility classes.
+ */
+
+/* Transparent sidebar: no panel fill and no divider, like the rest of the site. The collapsed
+   hover state floats over content, so it keeps its surface. */
+#nd-sidebar:not([data-collapsed="true"]) {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+/* Search as an underlined field and footer controls without a panel, like the original
+   docs sidebar. Fumadocs exposes no props for these, so match its surface class. */
+#nd-sidebar button[class*="bg-fd-secondary/50"] {
+  background-color: transparent;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  padding-inline-start: 0;
+}
+
+#nd-sidebar div[class*="bg-fd-secondary/50"] {
+  background-color: transparent;
+  border-color: transparent;
+}
+
+[data-pp-docs] .prose :where(h2):not(:where(.not-prose, .not-prose *)) {
+  font-family: var(--font-display);
+  font-size: 1.875em;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 }

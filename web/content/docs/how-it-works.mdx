@@ -1,0 +1,102 @@
+---
+title: How it works
+description: Where assertions run in the Harness lifecycle, and how each one moves from declaration to verdict.
+---
+
+## Placement in the Harness lifecycle
+
+Harness validates an agent's work in stages. Each stage costs more and catches more:
+
+| Stage    | What it proves                         | Cost              |
+| -------- | -------------------------------------- | ----------------- |
+| ASSERT   | The code is present and builds         | Seconds           |
+| SMOKE    | The app boots and its routes render    | A dev server boot |
+| EVALUATE | The app does what was asked            | An agent session  |
+| CHAIN    | On-chain effects really happened       | Testnet HBAR      |
+
+PolicyProbe extends `CHAIN`. Assertions run once per attempt, **after a successful chain deploy and before the dev server boots** for SMOKE. They need the deployed application and its signers, not a browser. A failing assertion short-circuits the rest of the attempt, the same way a failed deploy does.
+
+Recipes without `chainValidation.actors` or `chainValidation.assertions` follow the original execution path unchanged.
+
+## From declaration to verdict
+
+<Steps>
+<Step>
+
+### Provision signers
+
+Harness provisions its primary ephemeral signer and every named actor declared in `chainValidation.actors`, each with its own funded testnet account.
+
+</Step>
+<Step>
+
+### Sample the starting balance
+
+If the assertion declares `expect.balanceDelta`, Harness reads the holder's balance before the action runs.
+
+</Step>
+<Step>
+
+### Run the action as the selected actor
+
+The action command runs with only its selected actor's key exposed, through the same signer environment variables Harness already uses for deploy commands. Assertions without an `actor` use the primary signer.
+
+</Step>
+<Step>
+
+### Capture the transaction identifier
+
+The command must print the transaction it submitted: a Hedera transaction ID such as `0.0.1234@1773173730.000000000`, or an EVM transaction hash. Harness finds it in the command's combined output. A command that exits `0` without printing one is reported as a miswired script.
+
+</Step>
+<Step>
+
+### Read consensus evidence
+
+Harness polls Mirror Node for that transaction and classifies the result as found, not found, or an infrastructure error.
+
+</Step>
+<Step>
+
+### Compare in code
+
+The confirmed outcome, and the balance change if one was declared, are compared with `expect`. No language model is involved.
+
+</Step>
+<Step>
+
+### Emit a typed finding
+
+A confirmed mismatch emits a `chain-assertion` finding. An action that could not complete, or evidence that could not be read, emits `chain-assertion-infra`.
+
+</Step>
+<Step>
+
+### Route the finding
+
+Policy findings enter the normal runtime repair prompt. Infrastructure findings never masquerade as application defects.
+
+</Step>
+</Steps>
+
+## The exit code is not the verdict
+
+The action's exit code only tells Harness whether the action ran to completion. A non-zero exit or a timeout becomes a `chain-assertion-infra` finding, because a script that could not finish is not evidence either way.
+
+Once a transaction identifier is found, the verdict comes from Mirror Node's consensus record. The script's own claim of success or failure is never trusted. This is what lets a reverted transaction satisfy `mustRevert`: the script reports the hash, Mirror Node reports `CONTRACT_REVERT_EXECUTED`, and the comparison passes. See [Writing an action script](/docs/transaction-outcomes#writing-an-action-script).
+
+## Evidence states
+
+| Evidence             | Meaning                                              | Result                                   |
+| -------------------- | ---------------------------------------------------- | ---------------------------------------- |
+| Found                | Mirror Node returned the transaction's consensus result | Compared with `expect`                |
+| Not found            | No record appeared within the polling window         | `chain-assertion-infra`                  |
+| Infrastructure error | Mirror Node, RPC, or the action was unavailable      | `chain-assertion-infra`                  |
+
+Missing evidence is never treated as a passing assertion.
+
+## Next
+
+- [Recipe reference](/docs/recipe-reference) for every field in `chainValidation`
+- [Findings and repair](/docs/findings) for how results reach the coding agent
+- [Architecture](/docs/architecture) for trust boundaries

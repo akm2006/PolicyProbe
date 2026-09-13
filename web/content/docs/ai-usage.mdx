@@ -1,0 +1,21 @@
+---
+title: AI usage disclosure
+description: How AI coding agents were used to build PolicyProbe, and what remained human decisions.
+---
+
+AI coding agents were used extensively to research, implement, test, review, and document this project. Claude Code authored most of the initial Harness patch, the ATS fixture, tests, and internal documentation. OpenAI Codex later audited the repositories, fixed portability and dependency issues, and prepared the public-facing cleanup.
+
+## Human responsibilities
+
+The project owner wrote the initial strategy, set the objective, chose the scope and tradeoffs, authorized testnet operations, reviewed progress, and directed the final submission and publication decisions. The demo narration and submission choices remain human responsibilities.
+
+## AI-assisted work
+
+- The Harness actor and assertion schema, evidence reader, runner, finding integration, and related tests
+- The ATS bond deployment and action fixture, policy suite, and controlled before/after run
+- Repository research, technical documentation, review, and cleanup
+- Execution of disclosed Hedera testnet transactions using user-authorized credentials
+
+## Verifying the claims
+
+The claims do not depend on AI output alone. You can inspect the source, run the tests, and independently verify every recorded transaction hash through Mirror Node or HashScan. Start with [Testnet evidence](/docs/evidence).

@@ -1,0 +1,58 @@
+---
+title: Findings and repair
+description: How assertion results become typed findings, and which ones reach the coding agent.
+---
+
+An assertion that passes produces nothing. An assertion that fails, or cannot be evaluated, produces exactly one `ValidationFinding`.
+
+## Categories
+
+| Category                | Raised when                                                                                                                                     | Sent to repair |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| `chain-assertion`       | The observed outcome, revert reason, or balance change contradicts `expect`; or a fixable wiring problem, such as an action that exits `0` without printing a transaction, or an unset `accountEnv` | Yes            |
+| `chain-assertion-infra` | Trustworthy evidence could not be obtained: the action could not start, exited non-zero, or timed out; or Mirror Node never returned the transaction or a balance | No             |
+
+The split exists so that a network outage, a missing receipt, or a crashed command never triggers a code change for a policy that was never evaluated. When every chain-assertion finding in an attempt is `chain-assertion-infra`, the attempt aborts instead of spending a repair attempt on something no agent could fix.
+
+## Finding shape
+
+```ts title="src/types.ts (excerpt)"
+interface ValidationFinding {
+  id: string; // e.g. "chain-assertion:reject-unverified-transfer"
+  category:
+    | "files" | "static" | "secret" | "commands" | "agent"
+    | "playwright" | "eval" | "eval-infra"
+    | "chain-assertion" | "chain-assertion-infra";
+  message: string;
+  details?: string;
+  /** `fixed` findings are carried forward to show what the last repair closed. */
+  status?: "open" | "fixed";
+  /** Deterministic on-chain evidence for a chain-assertion finding. */
+  evidence?: {
+    transactionId?: string;
+    expected?: string;
+    observed?: string;
+  };
+}
+```
+
+A `chain-assertion` finding carries the transaction identifier and the expected and observed values in `evidence`. The repair prompt, and anything that reads `report.json`, sees concrete proof rather than only a message.
+
+## Keep assertion ids stable
+
+The repair loop tracks findings by id across attempts. The run report lists `openFindingIds` and `fixedFindingIds`, and a closed finding is carried forward with `status: "fixed"`.
+
+<Callout type="warn" title="Never rename an id to fix a finding">
+  Renaming an assertion makes a fix look like a new, unrelated finding instead of a closed one. Change the application, not the id.
+</Callout>
+
+## Caught, then fixed
+
+The recorded before/after run shows the lifecycle on real testnet transactions:
+
+1. Against the bond with whitelist enforcement disabled, the forbidden transfer [`0xdcf971…8877c`](https://hashscan.io/testnet/transaction/0xdcf971ccd2978dddf816fa2eb9f980578c63253ff7aa05f8bdc2219e9038877c) returned `SUCCESS`. The engine emitted `chain-assertion:reject-unverified-transfer`.
+2. Against the corrected bond, the same assertion's transfer [`0x513432…91f6a`](https://hashscan.io/testnet/transaction/0x513432955ca52f21edfb0c929d1cd6b91b1425b2aad28cd8e0830bb364391f6a) returned `CONTRACT_REVERT_EXECUTED`. No finding was emitted, so the same id resolves.
+
+## Secret redaction
+
+Harness redacts the primary signer's key and every actor's key from findings, attempt reports, persisted prompts, and repair output. A finding can be shared or logged without exposing signer material.

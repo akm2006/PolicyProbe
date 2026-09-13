@@ -1,0 +1,81 @@
+---
+title: Introduction
+description: Deterministic on-chain behavioral assertions for Hedera Harness.
+---
+
+PolicyProbe adds deterministic on-chain postcondition assertions to [Hedera Harness](https://github.com/hedera-dev/hedera-harness). A recipe declares an action, the signer that runs it, and the outcome that must follow: the transaction must succeed, must revert, or must move an exact balance. Harness executes the action on Hedera testnet, reads the consensus result from Mirror Node, and compares it with the declaration in code.
+
+## The gap it closes
+
+A command that exits `0` proves the command finished. It does not prove the deployed application enforced the rule it was built to enforce.
+
+Consider a tokenized bond that must reject transfers to unverified investors. If the bond is deployed with its whitelist disabled, the deploy succeeds, a forbidden transfer succeeds, and every process in the pipeline exits cleanly. Harness's semantic `EVALUATE` stage can inspect evidence, but a recipe had no way to state that *this action, signed by this account, must revert* and receive a deterministic verdict when it does not.
+
+## What PolicyProbe adds
+
+<Cards>
+  <Card title="Outcome assertions" href="/docs/transaction-outcomes">
+    Require `mustSucceed` or `mustRevert` for one declared action, with optional revert-reason matching.
+  </Card>
+  <Card title="Balance deltas" href="/docs/balance-deltas">
+    Assert exact signed changes in HBAR, native HTS tokens, or ERC-20-compatible contract balances.
+  </Card>
+  <Card title="Named actors" href="/docs/actors">
+    Exercise authorization boundaries with separately funded ephemeral signers.
+  </Card>
+  <Card title="Typed findings" href="/docs/findings">
+    Policy mismatches enter the repair loop. Infrastructure failures stay out of it.
+  </Card>
+</Cards>
+
+## One assertion
+
+```yaml title=".harness/spec.yaml"
+chainValidation:
+  enabled: true
+  network: testnet
+  actors:
+    attacker: { fundingHbar: 5 }
+  assertions:
+    - id: reject-unverified-transfer
+      actor: attacker
+      action:
+        name: attempt-transfer
+        command: npx tsx scripts/transfer.ts
+      expect:
+        outcome: mustRevert
+```
+
+The recorded ATS comparison ran the same `reject-unverified-transfer` assertion against two bonds that differ only in whitelist configuration:
+
+| Configuration      | Declared     | Observed on Mirror Node    | Verdict                                           |
+| ------------------ | ------------ | -------------------------- | ------------------------------------------------- |
+| Whitelist disabled | `mustRevert` | `SUCCESS`                  | Finding `chain-assertion:reject-unverified-transfer` |
+| Whitelist enabled  | `mustRevert` | `CONTRACT_REVERT_EXECUTED` | Pass                                              |
+
+The transaction hashes for both runs are listed in [Testnet evidence](/docs/evidence).
+
+<Callout title="Scope">
+  PolicyProbe verifies technical behavior on Hedera testnet. It does not certify legal or regulatory compliance.
+</Callout>
+
+## Where the code lives
+
+| Repository | Contents |
+| ---------- | -------- |
+| [`akm2006/hedera-harness`](https://github.com/akm2006/hedera-harness/tree/feat/deterministic-onchain-postconditions), branch `feat/deterministic-onchain-postconditions` | The engine: recipe schema, actor provisioning, evidence reader, assertion runner, findings, redaction, and tests. Proposed upstream as [hedera-harness PR #74](https://github.com/hedera-dev/hedera-harness/pull/74). |
+| [`akm2006/PolicyProbe`](https://github.com/akm2006/PolicyProbe) | The ATS bond fixture, recorded testnet evidence, design notes, and this site. |
+
+## Next steps
+
+<Cards>
+  <Card title="Quickstart" href="/docs/quickstart">
+    Build the engine, prepare the fixture, and run six policies on testnet.
+  </Card>
+  <Card title="How it works" href="/docs/how-it-works">
+    Follow one assertion from declaration to verdict.
+  </Card>
+  <Card title="Recipe reference" href="/docs/recipe-reference">
+    Every `chainValidation` field and the rules the loader enforces.
+  </Card>
+</Cards>

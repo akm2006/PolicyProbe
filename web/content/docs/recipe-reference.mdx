@@ -1,0 +1,250 @@
+---
+title: Recipe reference
+description: Every chainValidation field used by assertions, and the rules the recipe loader enforces.
+---
+
+Assertions are declared under `chainValidation` in a Harness recipe, `.harness/spec.yaml`. Everything outside `chainValidation` follows the standard [Harness recipe format](https://github.com/akm2006/hedera-harness/blob/feat/deterministic-onchain-postconditions/docs/authoring-a-recipe.md). Recipes declare `schemaVersion: 3`.
+
+## Complete example
+
+```yaml title=".harness/spec.yaml"
+schemaVersion: 3
+name: bond-transfer-policy
+# ...baseline, validators, and the rest of the recipe
+
+chainValidation:
+  enabled: true
+  network: testnet
+  operator:
+    accountIdEnv: HEDERA_OPERATOR_ID
+    privateKeyEnv: HEDERA_OPERATOR_KEY
+  fundingHbar: 10
+  sweepBack: true
+  expose:
+    browserLocalStorageKey: burnerWallet.pk
+    envVars: []
+  actors:
+    attacker: { fundingHbar: 5 }
+    complianceOfficer: {}
+  assertions:
+    - id: reject-unverified-transfer
+      description: Unverified investor must not receive the bond
+      actor: attacker
+      action:
+        name: attempt-transfer-to-bob
+        command: yarn hardhat run scripts/transfer-to-bob.ts --network hederaTestnet
+        timeoutMs: 60000
+      expect:
+        outcome: mustRevert
+        reasonContains: KYC
+    - id: coupon-balance-delta
+      action:
+        name: run-coupon
+        command: yarn hardhat run scripts/pay-coupon.ts --network hederaTestnet
+      expect:
+        outcome: mustSucceed
+        balanceDelta:
+          accountEnv: ALICE_ACCOUNT_ID
+          asset: hbar
+          equals: "500000000"
+```
+
+## `chainValidation`
+
+<TypeTable
+  type={{
+    enabled: {
+      type: "boolean",
+      description: "Turns on CHAIN validation for the recipe.",
+    },
+    network: {
+      type: '"testnet"',
+      description: "The only accepted network. The loader rejects mainnet.",
+    },
+    operator: {
+      type: "{ accountIdEnv, privateKeyEnv }",
+      description:
+        "Names of the environment variables that hold the funding operator's account ID and ECDSA private key. Values are read from your shell and never written into the workspace.",
+    },
+    fundingHbar: {
+      type: "number",
+      description:
+        "HBAR funded into the primary ephemeral signer, and the default for each actor. A reused signer below this balance is topped up.",
+    },
+    sweepBack: {
+      type: "boolean",
+      description: "At run end, delete ephemeral accounts and return their remaining HBAR to the operator, best effort.",
+    },
+    expose: {
+      type: "{ browserLocalStorageKey?, envVars? }",
+      description:
+        "How the primary signer reaches the app: the burner-wallet localStorage key, and extra environment variable names that also receive the signer's private key.",
+    },
+    deploy: {
+      type: "{ commands }",
+      description: "Commands that deploy contracts before assertions run.",
+    },
+    actors: {
+      type: "Record<string, Actor>",
+      description: "Additional named ephemeral signers. See Named actors.",
+      typeDescriptionLink: "/docs/actors",
+    },
+    assertions: {
+      type: "Assertion[]",
+      description: "Deterministic on-chain postconditions.",
+    },
+  }}
+/>
+
+## `actors`
+
+Each key is an actor name that assertions can reference.
+
+<TypeTable
+  type={{
+    fundingHbar: {
+      type: "number",
+      description: "HBAR funded into this actor's ephemeral account.",
+      default: "chainValidation.fundingHbar",
+    },
+  }}
+/>
+
+## `assertions[]`
+
+<TypeTable
+  type={{
+    id: {
+      type: "string",
+      required: true,
+      description:
+        "Unique per recipe and stable across repair attempts. Findings are reported as chain-assertion:<id>.",
+    },
+    description: {
+      type: "string",
+      description: "Human-readable statement of the policy, used in finding messages.",
+    },
+    actor: {
+      type: "string",
+      description: "Name of an entry in chainValidation.actors.",
+      default: "the primary signer",
+    },
+    action: {
+      type: "Action",
+      required: true,
+      description: "The single command whose transaction is evaluated.",
+    },
+    expect: {
+      type: "Expect",
+      required: true,
+      description: "The outcome, and optionally the balance change, that must be observed.",
+    },
+  }}
+/>
+
+## `action`
+
+<TypeTable
+  type={{
+    name: {
+      type: "string",
+      required: true,
+      description: "Label used in logs and finding messages.",
+    },
+    command: {
+      type: "string",
+      required: true,
+      description:
+        "Shell command run in the workspace with the executing signer's environment. It must print the Hedera transaction ID or EVM hash it submitted.",
+      typeDescriptionLink: "/docs/transaction-outcomes#writing-an-action-script",
+    },
+    timeoutMs: {
+      type: "number",
+      description: "Stop the command after this many milliseconds. A timeout produces a chain-assertion-infra finding.",
+    },
+  }}
+/>
+
+## `expect`
+
+<TypeTable
+  type={{
+    outcome: {
+      type: '"mustSucceed" | "mustRevert"',
+      required: true,
+      description: "mustSucceed passes on a SUCCESS result; mustRevert passes on any other confirmed result.",
+      typeDescriptionLink: "/docs/transaction-outcomes",
+    },
+    reasonContains: {
+      type: "string",
+      description: "Substring the revert reason must contain. Only valid with mustRevert.",
+    },
+    balanceDelta: {
+      type: "BalanceDelta",
+      description: "An exact balance change the action must produce.",
+      typeDescriptionLink: "/docs/balance-deltas",
+    },
+  }}
+/>
+
+## `expect.balanceDelta`
+
+<TypeTable
+  type={{
+    account: {
+      type: "string",
+      description:
+        "Literal holder: a Hedera account ID for hbar and tokenId assets, or an EVM address for contract assets.",
+    },
+    accountEnv: {
+      type: "string",
+      description: "Environment variable that holds the holder identifier at execution time.",
+    },
+    asset: {
+      type: '"hbar" | { tokenId } | { contract }',
+      required: true,
+      description: "HBAR, a native HTS token, or an ERC-20-compatible token contract read through balanceOf.",
+    },
+    equals: {
+      type: "string",
+      required: true,
+      description: "Exact signed integer change, in tinybars for HBAR or the token's smallest unit.",
+    },
+  }}
+/>
+
+Set exactly one of `account` or `accountEnv`.
+
+## Environment for action commands
+
+Harness runs each action with the executing signer: the assertion's `actor`, or the primary signer when `actor` is omitted.
+
+| Variable | Value |
+| -------- | ----- |
+| `HARNESS_SIGNER_ACCOUNT_ID` | The signer's Hedera account ID |
+| `HARNESS_SIGNER_EVM_ADDRESS` | The signer's EVM address |
+| `HARNESS_SIGNER_PRIVATE_KEY` | The signer's ECDSA private key |
+| Each name in `expose.envVars` | The same private key, for tooling that expects its own variable name |
+
+Harness redacts these keys from findings, reports, and repair prompts.
+
+## Load-time checks
+
+The recipe loader rejects these before any HBAR is spent:
+
+- `network` set to anything other than `testnet`
+- an `actor` that is not declared in `chainValidation.actors`
+- `reasonContains` combined with `outcome: mustSucceed`
+- a `balanceDelta` with both `account` and `accountEnv`, or neither
+- an `equals` value that is not a signed integer string
+
+## Before a full run
+
+A full Harness run can take 40 minutes to two hours. Check the recipe cheaply first:
+
+```bash
+hedera-harness doctor     # Node, git, agent CLI, the recipe, and every referenced path
+hedera-harness validate   # ASSERT only, no agent
+```
+
+The operator must be an **ECDSA** account; ED25519 has no EVM alias. `@hiero-ledger/sdk` ships with `hedera-harness`, so do not add it to the project under test.

@@ -1,0 +1,63 @@
+---
+title: Balance deltas
+description: Assert an exact signed change in HBAR, a native HTS token, or an ERC-20-compatible contract balance.
+---
+
+An outcome assertion tells you whether a transaction landed or reverted. A balance delta tells you what it moved. Add `expect.balanceDelta` to any assertion; it composes with `outcome`.
+
+```yaml title=".harness/spec.yaml"
+assertions:
+  - id: coupon-balance-delta
+    action:
+      name: run-coupon
+      command: yarn hardhat run scripts/pay-coupon.ts --network hederaTestnet
+    expect:
+      outcome: mustSucceed
+      balanceDelta:
+        accountEnv: ALICE_ACCOUNT_ID
+        asset: hbar
+        equals: "500000000"
+```
+
+## How it is measured
+
+Harness samples the holder's balance before the action runs and again after the transaction is confirmed. The assertion passes only when the difference equals `equals` exactly.
+
+## Choosing the asset
+
+| `asset`                  | Balance source                                                                 | Holder identifier            |
+| ------------------------ | ------------------------------------------------------------------------------ | ---------------------------- |
+| `hbar`                   | Account HBAR balance from Mirror Node, in tinybars                             | Hedera account ID, `0.0.x`   |
+| `{ tokenId: "0.0.x" }`   | Native HTS token balance from Mirror Node                                      | Hedera account ID, `0.0.x`   |
+| `{ contract: "0x..." }`  | The contract's standard `balanceOf(address)`, through Mirror Node's read-only `/contracts/call` simulation | Holder EVM address, `0x...` |
+
+Contract balances need no external JSON-RPC relay. Every read stays on Mirror Node.
+
+<Callout type="warn" title="Solidity security tokens are not HTS tokens">
+  A token that lives entirely in contract storage, such as an ERC-20 or ERC-1400-style security token issued through Asset Tokenization Studio, has no Mirror Node token-association entry. `{ tokenId }` reads `0` for every holder of such a token. Use `{ contract }` instead.
+</Callout>
+
+## Identifying the holder
+
+Set exactly one of:
+
+- **`account`**: a literal holder identifier.
+- **`accountEnv`**: the name of an environment variable that holds the identifier at execution time. Use this for accounts that only exist once the run starts, such as an actor's own account.
+
+Setting both, or neither, is rejected when the recipe loads. An `accountEnv` variable that is unset at execution time produces a `chain-assertion` finding, because it is a fixable configuration problem.
+
+## Writing `equals`
+
+`equals` is a signed integer written as a string, in the asset's smallest unit:
+
+- HBAR is measured in tinybars. `"500000000"` is 5 HBAR.
+- Tokens use their smallest unit.
+- Outgoing transfers are negative, for example `"-100"`.
+
+Quote the value so YAML keeps it a string. Values such as `"5.5e8"` or `"500,000,000"` are rejected at load, so a typo never reaches evaluation.
+
+## Timing
+
+A native HTS balance that is genuinely zero, for example for an account with no association to the token yet, can take the full polling window (`maxWaitMs`, 20 seconds by default) to resolve. Mirror Node cannot distinguish "association not indexed yet" from "no association", so Harness keeps retrying instead of risking a false zero.
+
+This mostly affects the sample taken before the action. The sample taken afterwards usually resolves quickly because the action just changed the balance. `{ contract }` reads are a single call simulation and are unaffected.

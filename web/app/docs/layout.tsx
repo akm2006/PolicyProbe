@@ -1,11 +1,23 @@
-import React from "react";
-import { DocSidebar } from "@/components/docs/DocSidebar";
+import type { ReactNode } from "react";
+import { DocsLayout } from "fumadocs-ui/layouts/docs";
+import { RootProvider } from "fumadocs-ui/provider/next";
+import { SidebarItem, SidebarSeparator } from "@/components/docs/SidebarTree";
+import { baseOptions } from "@/lib/layout.shared";
+import { source } from "@/lib/source";
 
-export default function DocsLayout({ children }: { children: React.ReactNode }) {
+export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <div className="max-w-[1400px] mx-auto px-6 lg:px-12 pt-32 lg:pt-40 pb-24 flex flex-col lg:flex-row gap-12 lg:gap-20">
-      <DocSidebar />
-      <div className="flex-1 min-w-0 max-w-3xl">{children}</div>
+    // data-pp-docs scopes the dark palette in globals.css: the marketing site stays light-only.
+    <div data-pp-docs className="noise-overlay">
+      <RootProvider theme={{ storageKey: "policyprobe-docs-theme", enableColorScheme: false }}>
+        <DocsLayout
+          tree={source.getPageTree()}
+          sidebar={{ components: { Item: SidebarItem, Separator: SidebarSeparator } }}
+          {...baseOptions()}
+        >
+          {children}
+        </DocsLayout>
+      </RootProvider>
     </div>
   );
 }

@@ -1,0 +1,73 @@
+---
+title: Troubleshooting
+description: Common failures when writing assertions or running the fixture, and how to resolve them.
+---
+
+## `npm test` fails on Windows
+
+The canonical Harness `npm test` script uses POSIX `rm`, and several upstream tests assume POSIX `true`, forward-slash paths, and process-group signals. On Windows, the full direct suite reports 14 pre-existing failures that are unrelated to PolicyProbe.
+
+Run the suite on Linux or macOS, or in CI. The feature-focused tests are portable.
+
+## Every assertion reports `chain-assertion-infra`
+
+Harness could not obtain trustworthy evidence. Check, in order:
+
+1. **The action runs on its own.** Run the command by hand with the same environment. A command that cannot start, exits non-zero, or times out is an infrastructure finding.
+2. **`timeoutMs` is generous enough** for a cold machine and a slow relay.
+3. **The transaction reached Mirror Node.** Look up the printed ID or hash on HashScan. If it never appears, the transaction may not have been submitted.
+4. **Mirror Node is reachable** and not lagging.
+
+When every chain-assertion finding in an attempt is infrastructure, Harness aborts the attempt instead of asking the agent to repair something it cannot fix.
+
+## A finding says the action produced no transaction id
+
+The command exited `0` but its output contained neither a Hedera transaction ID (`0.0.x@seconds.nanos`) nor an EVM hash (`0x` followed by 64 hex characters). This is a `chain-assertion` finding, because the script ran and is simply not wired to report. Print the identifier of the transaction it submits.
+
+## An expected revert never produces a transaction
+
+ethers pre-flights writes with `eth_estimateGas` and throws locally on a would-be revert, without broadcasting. With no transaction on chain, there is nothing for Mirror Node to confirm.
+
+Pass an explicit gas limit, and exit `0` after printing the hash even when `tx.wait()` throws. See [Writing an action script](/docs/transaction-outcomes#writing-an-action-script).
+
+## `reasonContains` never matches
+
+The contract most likely reverts with a custom error, such as `error InsufficientKyc(address who)`. Without the contract's ABI, Harness only sees Mirror Node's generic `CONTRACT_REVERT_EXECUTED` status. Remove `reasonContains` and rely on `outcome: mustRevert`.
+
+## A token balance delta always reads zero
+
+The token is probably a Solidity contract token, for example an ATS security token, not a native HTS token. Such holders have no Mirror Node token association. Use `asset: { contract: "0x..." }` with the holder's EVM address instead of `{ tokenId }`.
+
+## The balance check takes about 20 seconds
+
+A native HTS balance that is genuinely zero can use the whole polling window (`maxWaitMs`, 20 seconds by default), because Mirror Node cannot distinguish an unindexed association from no association. This is expected, and mostly affects the sample taken before the action.
+
+## `mustSucceed` assertions fail after an interrupted suite run
+
+`compliance-can-pause` pauses the bond, and the suite only unpauses it in its final cleanup step. If a run stops early, the bond stays paused: every transfer reverts, `mustSucceed` assertions fail, and `mustRevert` assertions pass for the wrong reason. Unpause it with the operator key:
+
+```bash
+BOND_DIAMOND_ADDRESS=0x... PAUSED=false npx tsx src/actions/set-pause.ts
+```
+
+## Actions fail with `INSUFFICIENT_FUNDS`
+
+The Hedera JSON-RPC relay reserves `gasLimit × gasPrice` before executing a call, regardless of the gas actually used. An actor whose balance drifts below that reservation fails every call, even though a transfer costs far less.
+
+The fixture uses a 700,000 gas limit to keep the reservation low. Top up the affected actor's account from the operator. Rerunning `src/setup-actors.ts` creates new accounts, which then need `02-setup-policy-fixtures.ts` again.
+
+## The recipe fails to load
+
+The loader rejects these before any HBAR is spent:
+
+- `network` set to anything other than `testnet`
+- an assertion `actor` that is not declared in `chainValidation.actors`
+- `reasonContains` combined with `outcome: mustSucceed`
+- a `balanceDelta` with both `account` and `accountEnv`, or neither
+- an `equals` value that is not a signed integer string
+
+Run `hedera-harness doctor` to check the recipe and every referenced path at once.
+
+## Rerunning setup keeps increasing supply
+
+`02-setup-policy-fixtures.ts` is idempotent except for issuance: each run mints additional units to Alice and Carol. The policy suite never asserts an exact supply, but keep an eye on the bond's 1,000,000-unit maximum supply if you rerun it often.

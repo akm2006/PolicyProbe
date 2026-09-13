@@ -1,0 +1,157 @@
+---
+title: Quickstart
+description: Build the engine, prepare the ATS bond fixture, and run six policy assertions on Hedera testnet.
+---
+
+This guide reproduces the recorded ATS results. Building and testing need no credentials. Live runs need a funded testnet account and spend testnet HBAR.
+
+## Prerequisites
+
+- **Node.js 20 or newer.**
+- **Linux or macOS** to run the canonical Harness `npm test` script, which uses POSIX `rm`. On Windows, see [Troubleshooting](/docs/troubleshooting#npm-test-fails-on-windows).
+- **A funded ECDSA Hedera testnet account** for live runs, from [portal.hedera.com](https://portal.hedera.com). ED25519 accounts have no EVM alias and cannot be used.
+
+<Steps>
+<Step>
+
+### Clone both repositories side by side
+
+The fixture imports the engine from `../../../hedera-harness/dist`, so both checkouts must share a parent directory, and the engine checkout must be named `hedera-harness`.
+
+```bash
+git clone -b feat/deterministic-onchain-postconditions https://github.com/akm2006/hedera-harness.git
+git clone https://github.com/akm2006/PolicyProbe.git
+```
+
+<Files>
+  <Folder name="workspace" defaultOpen>
+    <Folder name="hedera-harness" defaultOpen>
+      <Folder name="dist" />
+    </Folder>
+    <Folder name="PolicyProbe" defaultOpen>
+      <Folder name="fixtures" defaultOpen>
+        <Folder name="ats-bond" />
+      </Folder>
+    </Folder>
+  </Folder>
+</Files>
+
+</Step>
+<Step>
+
+### Build and test the engine
+
+```bash
+cd hedera-harness
+npm ci
+npm run typecheck
+npm test
+npm run build
+```
+
+The feature branch runs 277 Harness tests. `npm run build` writes `dist/`, which the fixture loads.
+
+</Step>
+<Step>
+
+### Build the fixture
+
+```bash
+cd ../PolicyProbe/fixtures/ats-bond
+npm ci
+npm run build
+```
+
+</Step>
+<Step>
+
+### Export testnet credentials
+
+```bash
+export HEDERA_OPERATOR_ID=0.0.1234567
+export HEDERA_OPERATOR_KEY=0x...   # ECDSA private key
+```
+
+<Callout type="error" title="Keep keys out of Git">
+  Never commit or paste operator or actor private keys. The scripts read credentials from the environment. A local env file is fine if it stays outside the repository or matches the ignored `.env.*` patterns.
+</Callout>
+
+</Step>
+<Step>
+
+### Create actors and deploy a bond
+
+```bash
+# One time: create and fund Alice, Bob, Carol, and an attacker with 5 HBAR each.
+# Their keys are written to .actors.json, which Git ignores.
+npx tsx src/setup-actors.ts
+
+# Issue "Atlas Infrastructure Note 2027" through the ATS factory, with the whitelist enabled.
+npx tsx src/01-deploy-bond.ts
+```
+
+The deploy script prints `diamond 0x...`, the address of your bond.
+
+</Step>
+<Step>
+
+### Put the bond into policy state
+
+```bash
+BOND_DIAMOND_ADDRESS=0x... npx tsx 02-setup-policy-fixtures.ts
+```
+
+This grants the operator the issuer, control-list, freeze-manager, and pauser roles; whitelists Alice, Bob, and Carol; issues bonds to Alice and Carol; and freezes Carol. It is safe to rerun, except that every run issues additional units.
+
+</Step>
+<Step>
+
+### Run the policy suite
+
+`run-policy-suite.mjs` targets the address in its `BOND` constant, which points at the disclosed prepared deployment. Your actors are only configured on your own bond, so set `BOND` to the address from the deploy step, then run:
+
+```bash
+node run-policy-suite.mjs
+```
+
+A fully passing run prints:
+
+```text
+6 / 6 PASS
+
+PASS  reject-unverified-transfer -- Unverified investor must not receive the bond
+PASS  verified-transfer-succeeds -- Already-verified investor can receive the bond
+PASS  attacker-cannot-freeze -- An account without the Pauser/Freeze role must not freeze a holder
+PASS  frozen-holder-cannot-transfer -- A frozen holder must not be able to transfer
+PASS  compliance-can-pause -- The compliance/pauser role may pause the whole asset
+PASS  paused-asset-blocks-transfer -- While the asset is paused, no transfer may succeed -- even between two verified investors
+
+cleanup: unpausing the bond so this suite is rerunnable...
+cleanup: done.
+```
+
+</Step>
+</Steps>
+
+## The before/after comparison
+
+```bash
+node run-before-after-demo.mjs
+```
+
+This runs `reject-unverified-transfer` against the two disclosed bonds hard-coded in the script, one deployed with whitelist enforcement disabled and the corrected one, signing as the `alice` entry in your `.actors.json`.
+
+<Callout type="warn" title="Recorded contracts, recorded actors">
+  The disclosed bonds were prepared for the original actors. Freshly created actors hold no units on them, so every transfer reverts and the script reports an unexpected result. The recorded transactions stay inspectable in [Testnet evidence](/docs/evidence); a fresh deployment is the strongest reproduction.
+</Callout>
+
+## Next
+
+<Cards>
+  <Card title="ATS bond fixture" href="/docs/ats-bond-fixture">
+    What each policy checks and how the suite calls the engine.
+  </Card>
+  <Card title="Recipe reference" href="/docs/recipe-reference">
+    Declare the same assertions in your own Harness recipe.
+  </Card>
+</Cards>

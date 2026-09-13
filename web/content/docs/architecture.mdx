@@ -1,0 +1,58 @@
+---
+title: Architecture
+description: Components, trust boundaries, and how the engine stays generic.
+---
+
+PolicyProbe extends the existing Harness `CHAIN` stage. It adds no new stage, no separate runner, and no production dependency. Recipes without `chainValidation.actors` or `chainValidation.assertions` keep their current behavior.
+
+For the step-by-step flow of a single assertion, see [How it works](/docs/how-it-works).
+
+## Components
+
+All engine code lives in the Harness fork on `feat/deterministic-onchain-postconditions`:
+
+| Harness module | Role |
+| -------------- | ---- |
+| `src/types.ts`, `src/specLoader.ts` | Recipe types and load-time validation of actors, outcomes, revert substrings, and balance deltas |
+| `src/validation/chainAssertionEvidence.ts` | Evidence resolution against Mirror Node, including revert-reason decoding and balance reads |
+| `src/validation/chainAssertions.ts` | The assertion runner: executes actions, compares evidence, and emits findings |
+| `src/attemptStages.ts`, `src/validation/chainSigner.ts` | Stage wiring and the ephemeral signer lifecycle for named actors |
+| `src/attemptReporting.ts`, `src/promptBuilder.ts`, `prompts/repair-*.md` | Reporting, secret redaction, and repair-prompt integration |
+| `docs/authoring-a-recipe.md` | Recipe authoring documentation |
+
+## Trust boundaries
+
+- **The recipe** controls action commands, actor names, and expected outcomes.
+- **Harness** injects signer secrets only into the selected child process, and redacts those values from findings, attempt reports, and repair prompts.
+- **Mirror Node** is the independent source for consensus results and balances. Missing evidence is never treated as a successful assertion.
+- **Revert reasons**: standard `Error(string)` revert data is decoded generically. Contract-specific custom errors need that contract's ABI, so they remain coarse result codes.
+- **The fixture or application** owns actor-role setup. The engine proves the declared outcome for a given signer. It does not infer legal identity or regulatory status.
+
+## Assertion families
+
+| Family | Checks |
+| ------ | ------ |
+| Transaction outcome | `mustSucceed` or `mustRevert`, with optional `reasonContains` |
+| Balance delta | Exact signed integer change for HBAR, a native HTS token, or an ERC-20 `balanceOf` contract |
+| Actor boundary | Either family above, applied with a separately provisioned named signer |
+
+The actor boundary composes with both evidence families rather than adding a third evidence primitive.
+
+## Staying generic
+
+The Harness engine knows only outcomes, actors, transaction identifiers, and balances. ATS addresses, roles, action scripts, and policy declarations live in `fixtures/ats-bond` in this repository. The ATS bond is one integration fixture, not a dependency of the Harness implementation.
+
+| Repository | License | Contains |
+| ---------- | ------- | -------- |
+| `hedera-harness` fork | MIT, inherited from upstream | Generic engine changes proposed upstream |
+| `PolicyProbe` | Apache-2.0 | ATS fixture, evidence, documentation, web console |
+
+## Reviewing the upstream change
+
+The prepared pull request suggests this review order:
+
+1. `src/types.ts` and `src/specLoader.ts`
+2. `src/validation/chainAssertionEvidence.ts`
+3. `src/validation/chainAssertions.ts`
+4. `src/attemptStages.ts` and `src/validation/chainSigner.ts`
+5. Reporting, prompt integration, tests, and authoring documentation

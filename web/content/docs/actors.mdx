@@ -1,0 +1,68 @@
+---
+title: Named actors
+description: Run assertions as separately funded ephemeral signers to prove authorization boundaries.
+---
+
+Many policies are about who may act. An attacker must not freeze a holder; a compliance officer may pause the asset. Named actors let one recipe exercise several signers, each with its own funded testnet account.
+
+```yaml title=".harness/spec.yaml"
+chainValidation:
+  fundingHbar: 10
+  actors:
+    attacker: { fundingHbar: 5 }
+    complianceOfficer: {}   # funded with chainValidation.fundingHbar
+  assertions:
+    - id: attacker-cannot-freeze
+      actor: attacker
+      action:
+        name: attacker-attempts-freeze
+        command: npx tsx scripts/freeze-holder.ts
+      expect:
+        outcome: mustRevert
+    - id: compliance-can-pause
+      actor: complianceOfficer
+      action:
+        name: pause-the-asset
+        command: npx tsx scripts/pause.ts
+      expect:
+        outcome: mustSucceed
+```
+
+## Choosing the signer
+
+- `actor: attacker` runs the action as that actor.
+- Omitting `actor` runs the action as the primary signer.
+- Naming an actor that is not declared under `chainValidation.actors` is a load-time error, not a runtime surprise.
+
+Only the executing signer's credentials are placed in the action's environment, through `HARNESS_SIGNER_ACCOUNT_ID`, `HARNESS_SIGNER_EVM_ADDRESS`, and `HARNESS_SIGNER_PRIVATE_KEY`. See [Environment for action commands](/docs/recipe-reference#environment-for-action-commands).
+
+## Lifecycle
+
+Actors go through the same lifecycle as the primary signer:
+
+1. **Provisioned** as a new ECDSA testnet account funded from the operator, with the actor's `fundingHbar` or the recipe default.
+2. **Reused** across repair and continue attempts in the same run directory, and topped up when the balance falls below its funding amount.
+3. **Swept** at run end when `sweepBack: true`: the account is deleted and its remaining HBAR returned to the operator, best effort.
+
+## Roles belong to the application
+
+Harness creates and funds accounts. It does not grant roles, add holders to a whitelist, or mark investors as verified. That setup belongs to the application or fixture under test.
+
+The engine proves the declared outcome for a given signer. It does not infer legal identity or regulatory status.
+
+In the [ATS bond fixture](/docs/ats-bond-fixture), four long-lived actors are created once, configured on the bond by a setup script, and passed to the engine directly:
+
+| Actor | Configured as | Used to prove |
+| ----- | ------------- | ------------- |
+| Alice | Whitelisted holder | Unverified recipients are rejected; verified transfers succeed; pause blocks transfers |
+| Bob | Whitelisted recipient | Transfers to verified investors succeed |
+| Carol | Whitelisted holder, then frozen | Frozen holders cannot transfer |
+| Attacker | Never whitelisted, no roles | Accounts without the freeze role cannot freeze holders |
+
+## Secret handling
+
+Every signer's private key is injected into the environment of the command it runs. If that command crashes and echoes its environment, the key could land in captured output, which becomes finding details, `report.json`, and repair prompts. Harness redacts every known signer key, primary and actor, before that text is persisted or sent to an agent.
+
+<Callout type="error" title="Keep actor keys local">
+  Actor key files such as the fixture's `.actors.json` are ignored by Git. Commit public account IDs as evidence; never commit keys.
+</Callout>

@@ -1,0 +1,109 @@
+---
+title: Transaction outcomes
+description: Require a declared action to succeed or revert, and write action scripts that report honestly.
+---
+
+```yaml title=".harness/spec.yaml"
+assertions:
+  - id: reject-unverified-transfer
+    actor: attacker
+    action:
+      name: attempt-transfer
+      command: npx tsx scripts/transfer.ts
+    expect:
+      outcome: mustRevert
+```
+
+## `mustSucceed` and `mustRevert`
+
+Harness reads the transaction's consensus result from Mirror Node and compares it with `outcome`:
+
+| `outcome` | Passes when the result is |
+| --------- | ------------------------- |
+| `mustSucceed` | `SUCCESS` |
+| `mustRevert` | Anything other than `SUCCESS`, for example `CONTRACT_REVERT_EXECUTED` |
+
+A mismatch produces a `chain-assertion` finding whose evidence carries the transaction, the expected outcome, and the observed result.
+
+<Callout type="warn" title="Make sure the revert is the policy under test">
+  `mustRevert` confirms that a transaction failed, not why. A paused asset or an empty balance satisfies it as well as the rule you meant. In the ATS suite, `compliance-can-pause` leaves the bond paused, so the suite unpauses it when it finishes; otherwise later `mustRevert` checks would pass for the wrong reason. Arrange state so the only plausible failure is the rule you are asserting, and pair each `mustRevert` with a `mustSucceed` for the permitted case.
+</Callout>
+
+## Matching the revert reason
+
+```yaml
+expect:
+  outcome: mustRevert
+  reasonContains: KYC
+```
+
+`reasonContains` is only valid with `mustRevert`. Harness checks the decoded revert reason when the evidence has one, and otherwise falls back to the coarse result status:
+
+| The transaction fails with | Observed reason | `reasonContains` |
+| -------------------------- | --------------- | ---------------- |
+| `require(ok, "KYC required")`, a Solidity `Error(string)` on the EVM path | `KYC required` | Distinguishes the reason |
+| A custom error, such as `error InsufficientKyc(address who)` | `CONTRACT_REVERT_EXECUTED` | Rarely useful; omit it |
+| A native Hedera transaction | The result status | Matches the status string only |
+
+Custom errors need the contract's own ABI to decode, and the generic engine deliberately does not carry one. Production contracts, including Asset Tokenization Studio, mostly use custom errors. For those, rely on `outcome: mustRevert` alone. It is still a deterministic check that the call reverted.
+
+A reason that does not contain the substring produces a `chain-assertion` finding.
+
+## Writing an action script
+
+Harness runs `action.command` in the workspace through a shell, with the executing signer exposed as [environment variables](/docs/recipe-reference#environment-for-action-commands). A well-behaved script:
+
+1. **Signs with the injected key**, `HARNESS_SIGNER_PRIVATE_KEY`, never a hard-coded one.
+2. **Prints the transaction it submitted**: a Hedera transaction ID in the form `0.0.x@seconds.nanos`, or an EVM hash, `0x` followed by 64 hex characters. Surrounding text is fine.
+3. **Exits `0` whenever a transaction exists**, including when it reverted. The verdict belongs to Harness.
+
+| What the script does | What Harness does |
+| -------------------- | ----------------- |
+| Exits `0` and prints an ID or hash | Reads the result from Mirror Node and compares it with `expect` |
+| Exits `0` without printing an ID or hash | `chain-assertion`: the script is miswired, which a repair can fix |
+| Exits non-zero or times out | `chain-assertion-infra`: not evidence either way |
+| Cannot be started | `chain-assertion-infra` |
+| Prints an ID that never appears on Mirror Node | `chain-assertion-infra` |
+
+### EVM actions with ethers
+
+ethers causes two problems for expected reverts. It pre-flights writes with `eth_estimateGas` and throws on a would-be revert without broadcasting, and `tx.wait()` throws on a mined revert. The fixture handles both:
+
+```ts title="fixtures/ats-bond/src/asset.ts (excerpt)"
+// An explicit gas limit skips eth_estimateGas, so a would-be revert is actually broadcast.
+export const TX_OVERRIDES = { gasLimit: 700_000 };
+
+export async function sendAndReport(txPromise: Promise<{ hash: string; wait: () => Promise<unknown> }>): Promise<void> {
+  const tx = await txPromise;
+  try {
+    await tx.wait();
+  } catch (error) {
+    // tx.wait() throws on a mined revert. Report the hash anyway: Mirror Node decides the verdict.
+    const hash = (error as { receipt?: { hash?: string }; transaction?: { hash?: string } })?.receipt?.hash
+      ?? (error as { transaction?: { hash?: string } })?.transaction?.hash
+      ?? tx.hash;
+    if (!hash) throw error; // no transaction hash anywhere: a genuine submission failure
+    console.log(`submitted ${hash}`);
+    return;
+  }
+  console.log(`submitted ${tx.hash}`);
+}
+```
+
+```ts title="fixtures/ats-bond/src/actions/transfer.ts"
+import { connectAsset, requireEnv, sendAndReport, TX_OVERRIDES } from "../asset.js";
+
+const targetAddress = requireEnv("TARGET_ADDRESS");
+const amount = requireEnv("AMOUNT");
+
+const { transfer } = connectAsset();
+await sendAndReport(transfer.transfer(targetAddress, amount, TX_OVERRIDES));
+```
+
+`connectAsset()` signs with `HARNESS_SIGNER_PRIVATE_KEY`.
+
+Choose a gas limit with headroom over measured usage rather than a very large one. The Hedera JSON-RPC relay reserves `gasLimit × gasPrice` up front, so an oversized limit can fail with `INSUFFICIENT_FUNDS`. See [Troubleshooting](/docs/troubleshooting#actions-fail-with-insufficient_funds).
+
+### Native Hedera SDK actions
+
+`transactionId.toString()` already produces the `0.0.x@seconds.nanos` form. Print it as soon as the transaction is submitted, before waiting for a receipt, because receipt lookups throw on a failed status and an expected revert would otherwise leave nothing printed.

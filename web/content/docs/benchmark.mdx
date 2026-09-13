@@ -1,0 +1,59 @@
+---
+title: Benchmark
+description: Measured capability change, diff size, and verification results against the upstream base.
+---
+
+Measurements compare the Harness feature branch with `hedera-dev/hedera-harness:dev` at `587a2f335c29835e9505d9f13e230b8d677c0674`.
+
+## Capability change
+
+| Measure | Base | Feature branch |
+| ------- | ---: | -------------: |
+| Declarative action-outcome assertion families | 0 | 2: outcome and balance delta |
+| Named assertion actors | 0 | Supported |
+| Typed policy and infrastructure finding categories | 0 | 2 |
+| Harness tests | 195 | 277 |
+
+The actor boundary composes with both assertion families rather than adding another evidence primitive.
+
+## Diff size
+
+Measured with `git diff --stat upstream/dev`:
+
+| Measure | Value |
+| ------- | ----: |
+| Files changed | 21 |
+| Insertions / deletions | 2,885 / 36 |
+| Production and prompt insertions | 1,174 |
+| Test insertions, across seven test files | 1,599 |
+| Documentation insertions | 112 |
+| Tests added to the full Harness suite | 82 |
+
+A typical transaction-outcome assertion adds about six lines to a recipe. The shared engine owns command execution, identifier extraction, Mirror Node polling, outcome comparison, findings, actor lifecycle, and redaction.
+
+## Verification
+
+### Ubuntu CI
+
+A [GitHub Actions run on Ubuntu](https://github.com/akm2006/PolicyProbe/actions/runs/34677303566) passed the full Harness test suite, typecheck, build, package smoke test, browser tests, and the ATS fixture build and dependency audit.
+
+### Local, Windows with Node 22
+
+| Check | Result |
+| ----- | ------ |
+| Harness TypeScript typecheck | Pass |
+| Harness build via direct `tsc` | Pass |
+| Feature-focused suites | 75 pass, 0 fail, 6 credential-gated live tests skipped |
+| Full direct suite | 257 pass, 14 fail, 6 skipped |
+| ATS fixture TypeScript build | Pass |
+| ATS fixture production dependency audit | 0 known vulnerabilities |
+
+The 14 full-suite failures on Windows are pre-existing assumptions in upstream tests, including POSIX `true`, path-separator assertions, and process-group signal behavior. The feature-focused tests are portable. The canonical `npm test` script uses POSIX `rm`, so it needs Linux or macOS until upstream Windows support lands.
+
+## Testnet evidence
+
+The recorded ATS run evaluates six policies and reports six passes. The before/after comparison detects a whitelist-disabled bond because the forbidden transfer succeeds, then passes against the corrected bond when the same transfer reverts. See [Testnet evidence](/docs/evidence) for contract and transaction identifiers.
+
+<Callout title="What is not claimed">
+  No repeated-run false-positive or false-negative rate is claimed. Measuring one would require a separately designed experiment.
+</Callout>
