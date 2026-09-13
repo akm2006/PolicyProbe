@@ -2,11 +2,11 @@ import React from "react";
 import Link from "next/link";
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { PageHeader } from "@/components/SectionHeader";
-import { DIAMOND_ADDRESS, hashscanAddress, hashscanTx } from "@/lib/data";
+import { DIAMOND_ADDRESS, HARNESS_PR_URL, hashscanAddress, hashscanTx } from "@/lib/data";
 
 export const metadata = {
   title: "Verification Ledger — PolicyProbe",
-  description: "Cryptographic receipts, upstream commits, and testnet consensus timestamps for PolicyProbe.",
+  description: "Recorded Hedera Testnet evidence and the upstream Harness contribution.",
 };
 
 function ExtLink({ href, children }: { href: string; children: React.ReactNode }) {
@@ -45,10 +45,10 @@ function LedgerSection({ number, title, children }: { number: string; title: str
 }
 
 const assertionTypes = [
-  { name: "mustSucceed", body: "Transaction executed with status SUCCESS (200)." },
-  { name: "mustRevert", body: "EVM reverted, e.g. CONTRACT_REVERT_EXECUTED with a custom error selector." },
-  { name: "balanceDelta", body: "Exact balance change across HBAR and HTS tokens." },
-  { name: "stateEquals", body: "Contract storage inspected via view call over EVM RPC." },
+  { name: "mustSucceed", body: "The confirmed transaction result is SUCCESS." },
+  { name: "mustRevert", body: "The confirmed transaction result is a revert." },
+  { name: "reasonContains", body: "The decoded revert reason contains the configured text, when available." },
+  { name: "balanceDelta", body: "The confirmed balance change matches the configured HBAR or token delta." },
 ];
 
 export default function ProofPage() {
@@ -57,7 +57,7 @@ export default function ProofPage() {
       <PageHeader
         eyebrow="Verification ledger"
         title="Proof, not promises."
-        description="Testnet receipts, pinned upstream commits, and assertion records."
+        description="Recorded testnet results, supported assertions, and the upstream contribution."
         className="mb-0"
       />
 
@@ -66,11 +66,8 @@ export default function ProofPage() {
           <Row label="Base repository">
             <ExtLink href="https://github.com/hedera-dev/hedera-harness">hedera-dev/hedera-harness:dev</ExtLink>
           </Row>
-          <Row label="Pinned base SHA">4bfa099951b147318ff245ce0d47346b9409890f</Row>
-          <Row label="Branch">policyprobe/deterministic-onchain-postconditions</Row>
-          <Row label="Commits ahead">11 scoped commits</Row>
-          <Row label="Harness suite" tone="pass">
-            277 / 277 pass · 0 regressions
+          <Row label="Pull request">
+            <ExtLink href={HARNESS_PR_URL}>#74 · open against dev</ExtLink>
           </Row>
         </dl>
       </LedgerSection>
@@ -78,19 +75,14 @@ export default function ProofPage() {
       <LedgerSection number="02" title="Hedera Testnet">
         <dl className="divide-y divide-foreground/10">
           <Row label="Network">296 (Hedera Testnet)</Row>
-          <Row label="Operator account">
-            <ExtLink href="https://hashscan.io/testnet/account/0.0.10464599">
-              0.0.10464599 (0xb40a2e5fdfaec87bad82246d041886354f5faff4)
-            </ExtLink>
-          </Row>
           <Row label="ATS bond factory">0.0.9213391</Row>
           <Row label="Bond diamond">
             <ExtLink href={hashscanAddress(DIAMOND_ADDRESS)}>{DIAMOND_ADDRESS}</ExtLink>
           </Row>
-          <Row label="ISIN">USPLCYPROB86 (valid ISO 6166)</Row>
+          <Row label="ISIN">USPLCYPROB86</Row>
           <Row label="Deployment tx">
-            <ExtLink href={hashscanTx("0xc2b8cc004f862abeec6dd455df92ff5feaa602cdbdf53e2d8c4f3bc0711d2d94")}>
-              0xc2b8cc004f862abeec6dd455df92ff5feaa602cdbdf53e2d8c4f3bc0711d2d94
+            <ExtLink href={hashscanTx("0x483922db058fd105577d8087bdf449b41854e80647d756f1de4958e0a24c6aa2")}>
+              0x483922db058fd105577d8087bdf449b41854e80647d756f1de4958e0a24c6aa2
             </ExtLink>
           </Row>
         </dl>
@@ -109,10 +101,17 @@ export default function ProofPage() {
 
       <LedgerSection number="04" title="Results">
         <dl className="divide-y divide-foreground/10">
-          <Row label="Live onchain assertion tests" tone="pass">36 / 36 pass</Row>
-          <Row label="Ephemeral actor provisioning" tone="pass">2 / 2 pass</Row>
-          <Row label="ATS bond policy suite" tone="pass">6 / 6 pass</Row>
-          <Row label="Before / after">Defect caught on 0xeff7…, fixed on 0x29d9…</Row>
+          <Row label="ATS bond policy suite" tone="pass">6 / 6 recorded assertions matched · checked 2026-09-12</Row>
+          <Row label="Whitelist disabled">
+            <ExtLink href={hashscanTx("0xdcf971ccd2978dddf816fa2eb9f980578c63253ff7aa05f8bdc2219e9038877c")}>
+              SUCCESS · 0xeff72…9E03
+            </ExtLink>
+          </Row>
+          <Row label="Whitelist enabled">
+            <ExtLink href={hashscanTx("0x513432955ca52f21edfb0c929d1cd6b91b1425b2aad28cd8e0830bb364391f6a")}>
+              CONTRACT_REVERT_EXECUTED · 0x19CD…06B8
+            </ExtLink>
+          </Row>
         </dl>
       </LedgerSection>
 

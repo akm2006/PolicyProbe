@@ -2,10 +2,10 @@
 
 > **Expected. Executed. Verified.**
 
-**Document:** `DESIGN.md`  
-**Project:** PolicyProbe  
-**Purpose:** Single source of truth for brand identity, product UI, evidence visualization, motion, diagrams, and final frontend polish.  
-**Status:** ETHOnline 2026 production design direction  
+**Document:** `PolicyProbe_DESIGN.md`
+**Project:** PolicyProbe
+**Purpose:** Reference for brand identity, product UI, evidence visualization, motion, and diagrams.
+**Status:** Current web interface design reference
 **Last updated:** September 2026
 
 ---
@@ -1365,7 +1365,7 @@ Do not display legal/regulatory claims.
 
 # 26. Proof Page
 
-The `/proof` page is the judge-facing verification surface.
+The `/proof` page is the reviewer-facing verification surface.
 
 It should be sparse.
 
@@ -1406,8 +1406,8 @@ Additional:
 Assertion types
 mustSucceed
 mustRevert
+reasonContains
 balanceDelta
-stateEquals
 ```
 
 No marketing hero.
@@ -1427,22 +1427,17 @@ Example:
 ```text
 POLICYPROBE
 
-PP-017  Unverified investor must not receive bond
+PP-001  reject-unverified-transfer
 
-  actor       Bob (KYC=false)
-  action      transfer 100 BOND
-  expected    REVERT
+  actor       alice
+  action      transfer to an unverified investor
+  expected    mustRevert
   observed    SUCCESS
-
-  balance
-    before    0
-    after     100
-    delta     +100
 
   result      FAIL
 
-  finding     POLICY_POSTCONDITION_FAILED
-  tx          0.0.123@...
+  finding     chain-assertion:reject-unverified-transfer
+  tx          0xdcf971…8877c
 ```
 
 Use:
@@ -1976,7 +1971,7 @@ Final frontend priority:
 2. expected/observed hierarchy
 3. result clarity
 4. repair story
-5. judge verification
+5. reviewer verification
 6. responsive layout
 7. typography
 8. spacing
@@ -2036,54 +2031,18 @@ unless technically true and precisely qualified.
 
 ---
 
-# 44. Judge Experience
+# 44. Review Experience
 
-The ideal judge journey:
-
-## 10 seconds
-
-Understand:
-
-> PolicyProbe proves whether deployed behavior matches declared policy.
-
-## 30 seconds
-
-See:
-
-```text
-Expected: REVERT
-Observed: SUCCESS
-FAIL
-```
-
-## 60 seconds
-
-See a real Hedera Testnet transaction proving the mismatch.
-
-## 90 seconds
-
-See a structured Harness finding.
-
-## 2 minutes
-
-See the repair.
-
-## 2.5 minutes
-
-See the same probe PASS.
-
-## GitHub
-
-See:
+The review path should make it easy to inspect:
 
 - clean Harness diff
 - tests
-- API
+- assertion API
 - upstream PR
 - ATS fixture
-- real evidence
+- recorded testnet evidence
 
-The design exists to make this sequence effortless.
+The interface links each claim to its source or transaction record.
 
 ---
 
@@ -2096,32 +2055,31 @@ Use one deliberately broken rule:
 ### Expected
 
 ```text
-REVERT
+mustRevert
 ```
 
 ### Observed
 
 ```text
 SUCCESS
-Recipient balance +100
 ```
 
 ### PolicyProbe
 
 ```text
 FAIL
-POLICY_POSTCONDITION_FAILED
+chain-assertion:reject-unverified-transfer
 ```
 
 ### Repair
 
-Harness corrects the implementation/configuration.
+The same assertion passes against the whitelist-enabled bond.
 
 ### Rerun
 
 ```text
-Expected: REVERT
-Observed: REVERT
+Expected: mustRevert
+Observed: CONTRACT_REVERT_EXECUTED
 PASS
 ```
 
@@ -2132,8 +2090,8 @@ This story should influence:
 - demo video
 - architecture
 - README
-- X launch
-- ETHGlobal page
+- project website
+- project documentation
 
 ---
 

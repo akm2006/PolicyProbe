@@ -7,7 +7,7 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
-  // Pin the workspace root to web/ so the stray root package-lock.json isn't picked up.
+  // Keep Turbopack's workspace root scoped to this app.
   turbopack: {
     root,
   },

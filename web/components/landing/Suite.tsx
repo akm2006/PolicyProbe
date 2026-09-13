@@ -21,7 +21,7 @@ export function Suite() {
     <section id="matrix" ref={ref} className="relative py-24 lg:py-32 border-t border-foreground/10 scroll-mt-24">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className={cn("transition-all duration-700", isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4")}>
-          <SectionHeader eyebrow="Conformance suite" title="Six policies." muted="All verified onchain." />
+          <SectionHeader eyebrow="Conformance suite" title="Six policies." muted="Recorded on Hedera Testnet." />
         </div>
 
         <div className="border-t border-foreground/10">
@@ -51,7 +51,7 @@ export function Suite() {
                   <span className="w-1.5 h-1.5 rounded-full bg-pass" />
                   {p.result}
                 </span>
-                <span className="text-muted-foreground">{p.consensusGas.toLocaleString()} gas</span>
+                <span className="text-muted-foreground">{p.consensusGas.toLocaleString("en-US")} gas</span>
                 <span className="inline-flex items-center gap-4">
                   <button
                     type="button"

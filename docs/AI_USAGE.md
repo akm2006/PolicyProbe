@@ -6,9 +6,8 @@ documentation. OpenAI Codex later audited the repositories, fixed portability an
 issues, and prepared the public-facing cleanup.
 
 The human project owner wrote the initial strategy, supplied the project objective, chose the
-scope and tradeoffs, authorized testnet operations, reviewed progress, and directed the final
-submission and publication decisions. The final demo narration and submission choices remain
-human responsibilities.
+scope and tradeoffs, authorized testnet operations, reviewed progress, and directed release
+decisions. Any external demo or publication choices remain human responsibilities.
 
 AI-assisted work includes:
 

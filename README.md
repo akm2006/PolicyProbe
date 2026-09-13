@@ -265,10 +265,10 @@ PolicyProbe
 | [Testnet evidence](fixtures/ats-bond/EVIDENCE.md) | Contracts, actors, and every transaction hash |
 | [ATS bond fixture](fixtures/ats-bond/README.md) | Files, setup, and how the suite calls the engine |
 | [Upstream PR description](docs/UPSTREAM_PR_DESCRIPTION.md) | The proposal as submitted to hedera-harness |
-| [ETHOnline 2026](docs/ETHONLINE_2026.md) | Submission notes |
+| [Submission materials](docs/ETHONLINE_2026.md) | Recording and evidence checklist |
 | [AI usage disclosure](docs/AI_USAGE.md) | How AI tools were used in this project |
 
-The full documentation site lives in [`web/`](web). Run `npm install && npm run dev` there and open
+The full documentation site lives in [`web/`](web). Run `npm ci && npm run dev` there and open
 `http://localhost:3000/docs`.
 
 ## Contributing

@@ -31,12 +31,14 @@ chain-signer.json
 coverage/
 *.log
 npm-debug.log*
+*.tsbuildinfo
 
 # OS / editor
 .DS_Store
 .vscode/
 .idea/
 .playwright-mcp/
+.playwright-cli/
 graphify-out/
 
 # Foundry

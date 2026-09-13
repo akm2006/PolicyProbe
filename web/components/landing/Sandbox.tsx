@@ -67,8 +67,10 @@ export function Sandbox() {
     <section id="console" ref={ref} className="relative py-24 lg:py-32 scroll-mt-24">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className={cn("transition-all duration-700", isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8")}>
-          <SectionHeader eyebrow="Sandbox" title="Real transactions." muted="Real verdicts." />
+          <SectionHeader eyebrow="Recorded testnet runs" title="Real transactions." muted="Recorded verdicts." />
         </div>
+
+        <p className="mb-8 font-mono text-xs text-muted-foreground">Replay shows recorded results; it does not submit a new transaction.</p>
 
         <div className="grid lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-12 lg:gap-16 items-start">
           {/* Case list */}
@@ -165,7 +167,7 @@ export function Sandbox() {
                               mode === m ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
                             )}
                           >
-                            {m === "with-pp" ? "PolicyProbe" : "Baseline exit code"}
+                            {m === "with-pp" ? "PolicyProbe" : "CLI exit code"}
                           </button>
                         ))}
                       </div>
@@ -179,31 +181,31 @@ export function Sandbox() {
                       className="inline-flex items-center gap-2 text-xs rounded-full border border-foreground/20 px-4 py-2 hover:bg-foreground/5 transition-colors disabled:opacity-50"
                     >
                       <Play className={cn("w-3 h-3", running && "animate-pulse")} />
-                      {running ? "Evaluating…" : "Run"}
+                      {running ? "Replaying…" : "Replay recorded result"}
                     </button>
                   </div>
 
                   <div className={cn("py-4 border-b border-foreground/10", stageClass(1))}>
                     <p className="text-xs text-muted-foreground mb-1">01 · Declared</p>
-                    <p>expect.transactionOutcome: &quot;{active.expected}&quot;</p>
+                    <p>expect.outcome: &quot;{active.expected}&quot;</p>
                   </div>
                   <div className={cn("py-4 border-b border-foreground/10", stageClass(2))}>
-                    <p className="text-xs text-muted-foreground mb-1">02 · Observed on Hedera</p>
+                    <p className="text-xs text-muted-foreground mb-1">02 · Recorded Hedera result</p>
                     <p className="break-words">{active.observedStatus}</p>
                   </div>
                   <div className={cn("py-4", stageClass(3))}>
                     <p className="text-xs text-muted-foreground mb-1">
-                      03 · {isBaseline ? "Baseline verdict" : "PolicyProbe verdict"}
+                      03 · {isBaseline ? "Action script result" : "PolicyProbe verdict"}
                     </p>
                     {isBaseline ? (
                       <>
-                        <p className="text-pass">PASS — CLI exited 0</p>
-                        <p className="mt-2 text-fail font-sans">Silent leak: an unverified investor received 100 BOND.</p>
+                        <p className="text-pass">Action completed — CLI exited 0</p>
+                        <p className="mt-2 text-fail font-sans">The recorded SUCCESS result violated the declared mustRevert outcome.</p>
                       </>
                     ) : active.verdict === "FAIL" ? (
                       <>
                         <p className="text-fail">FAIL — expected {active.expected}, observed SUCCESS</p>
-                        <p className="mt-2 text-muted-foreground font-sans">Finding sent to promptBuilder.ts for repair.</p>
+                        <p className="mt-2 text-muted-foreground font-sans">Harness records a chain-assertion finding for repair.</p>
                       </>
                     ) : (
                       <>
@@ -220,7 +222,7 @@ export function Sandbox() {
                   {[
                     ["Actor", active.actor],
                     ["Timestamp", active.consensusTimestamp],
-                    ["Gas", `${active.gasUsed.toLocaleString()} units`],
+                    ["Gas", `${active.gasUsed.toLocaleString("en-US")} units`],
                   ].map(([k, v]) => (
                     <div key={k} className="py-3 flex flex-col sm:flex-row sm:justify-between gap-1">
                       <dt className="text-muted-foreground">{k}</dt>

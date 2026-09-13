@@ -59,7 +59,7 @@ export function CallToAction() {
               </div>
 
               <p className="text-sm text-muted-foreground mt-8 font-mono">
-                277/277 tests · 11 scoped commits · Apache-2.0
+                6/6 ATS assertions · Hedera Testnet evidence · Apache-2.0
               </p>
             </div>
 

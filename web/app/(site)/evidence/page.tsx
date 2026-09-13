@@ -24,8 +24,8 @@ export default function EvidencePage() {
       <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6 border-b border-foreground/10 mb-12">
         <PageHeader
           eyebrow="Evidence explorer"
-          title="Raw receipts."
-          description="JSON records queried directly from the Hedera Mirror Node."
+          title="Recorded evidence."
+          description="Normalized summaries of Hedera Mirror Node results, rechecked on 2026-09-12. Each HashScan link opens the corresponding transaction."
           className="border-0 mb-0"
         />
         <a
@@ -97,13 +97,13 @@ export default function EvidencePage() {
             ].map(([label, value, tone]) => (
               <div key={label} className="bg-background px-6 py-4 min-w-0">
                 <div className="font-mono text-xs text-muted-foreground mb-1">{label}</div>
-                <div className={cn("font-mono text-xs break-all", tone)}>{value}</div>
+                <div className={cn("font-mono break-all", label === "Timestamp" ? "text-[10px] tracking-tight" : "text-xs", tone)}>{value}</div>
               </div>
             ))}
           </div>
 
           <div className="flex items-center justify-between px-6 lg:px-8 py-3 border-b border-foreground/10">
-            <span className="font-mono text-xs text-muted-foreground">receipt.json</span>
+            <span className="font-mono text-xs text-muted-foreground">evidence.json · normalized snapshot</span>
             <button
               type="button"
               onClick={() => handleCopy(JSON.stringify(currentRecord.payload, null, 2), currentRecord.id)}

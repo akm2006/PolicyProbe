@@ -68,10 +68,7 @@ export function Footer() {
 
         <div className="py-5 border-t border-foreground/10 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <p>PolicyProbe · Apache-2.0</p>
-          <span className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-pass" />
-            Hedera Testnet · 277/277 tests green
-          </span>
+          <span>Hedera Testnet · receipts checked 2026-09-12</span>
         </div>
       </div>
     </footer>
